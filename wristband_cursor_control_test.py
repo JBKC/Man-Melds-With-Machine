@@ -33,6 +33,8 @@ async def consumer(buffer, mouse):
     Simple mouse movements
     '''
 
+    ### NEXT - add speed changes depending on angle
+
     while True:
         x,y,z = buffer[-1]
         print(y)
