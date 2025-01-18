@@ -6,6 +6,10 @@ Run from Terminal
 
 import cv2
 import mediapipe as mp
+import serial
+
+# Initialize serial communication
+serial_port = serial.Serial('/dev/ttyGS0', 9600, timeout=1)
 
 # intialise mediapipe
 mp_hands = mp.solutions.hands
@@ -41,28 +45,30 @@ while cap.isOpened():
     if results.multi_hand_landmarks:
         h, w, _ = frame.shape  # Get the dimensions of the frame
 
-        INDEX_ID = 8                # use tip of index finger as reference point for movement
+        INDEX_ID = 8  # use tip of index finger as reference point for movement
 
         for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
             hand_label = hand_info.classification[0].label  # left vs right hand
 
             loc = hand_landmarks.landmark[INDEX_ID]
 
-            # Convert normalized coordinates to pixel coordinates
-            x_pixel = int(loc.x * w)
-            y_pixel = int(loc.y * h)
+            # normalise coordinates between (0,0) and (1,1)
+            x_loc = loc.x
+            y_loc = 1.0 - loc.y          # flip y axis
 
-            # flip x-coordinates and labels to handle mirroring
-            x_pixel = w - x_pixel
+            # handle mirroring
             if hand_label == "Left":
                 hand_label = "Right"
             else:
                 hand_label = "Left"
 
-            print(f"{hand_label}: x={x_pixel}, y={y_pixel}")
+            print(f"{hand_label}: x={x_loc:.2f}, y={y_loc:.2f}")
 
-    # Display the frame (optional)
-    cv2.imshow("Hand Tracking", frame)
+            data = f"{x_loc:.2f},{y_loc:.2f}\n"
+            serial_port.write(data.encode())
+
+    # Display the frame
+    # cv2.imshow("Hand Tracking", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
