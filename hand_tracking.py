@@ -53,18 +53,19 @@ while cap.isOpened():
             loc = hand_landmarks.landmark[INDEX_ID]
 
             # normalise coordinates between (0,0) and (1,1)
+            # flip both axes
             x_loc = loc.x
             y_loc = 1.0 - loc.y          # flip y axis
 
             # handle mirroring
             if hand_label == "Left":
-                hand_label = "Right"
+                hand_label = "R"
             else:
-                hand_label = "Left"
+                hand_label = "L"
 
             print(f"{hand_label}: x={x_loc:.2f}, y={y_loc:.2f}")
 
-            data = f"{x_loc:.2f},{y_loc:.2f}\n"
+            data = f"{hand_label},{x_loc:.2f},{y_loc:.2f}\n"
             serial_port.write(data.encode())
 
     # Display the frame

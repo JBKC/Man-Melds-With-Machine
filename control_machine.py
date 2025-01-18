@@ -1,23 +1,36 @@
-'''
-Collects data produced by hand_tracking.py
-'''
-
 import serial
+import pyautogui
 from pynput.mouse import Controller
+from screeninfo import get_monitors
+from collections import deque
 
 # Initialize serial port
-serial_port = serial.Serial('/dev/tty.usbmodem14101', 9600, timeout=1)  # Replace with your serial port
+serial_port = serial.Serial('/dev/tty.usbmodem14101', 9600, timeout=1)
 
 # Initialize mouse controller
 mouse = Controller()
 
-# Screen dimensions (adjust to your screen resolution)
-SCREEN_WIDTH = 1920
-SCREEN_HEIGHT = 1080
+# Get screen dimensions
+monitors = get_monitors()
+primary_monitor = monitors[0]
+screen_width = primary_monitor.width
+screen_height = primary_monitor.height
+
+# Smoothing buffers
+buffer_size = 5
+x_buffer = deque(maxlen=buffer_size)
+y_buffer = deque(maxlen=buffer_size)
+
+def smooth_coordinates(x, y):
+    x_buffer.append(x)
+    y_buffer.append(y)
+    return sum(x_buffer) / len(x_buffer), sum(y_buffer) / len(y_buffer)
 
 def map_to_screen(x, y):
     """Map normalized coordinates [0,1] to screen coordinates."""
-    return int(x * SCREEN_WIDTH), int(y * SCREEN_HEIGHT)
+    screen_x = int(x * screen_width)
+    screen_y = int(y * screen_height)
+    return smooth_coordinates(screen_x, screen_y)
 
 print("Listening for data from Raspberry Pi...")
 
@@ -26,13 +39,17 @@ while True:
         # Read data from the serial port
         data = serial_port.readline().decode().strip()
         if data:
-            print(data)
-            # # Parse the x and y coordinates
-            # x_loc, y_loc = map(float, data.split(','))
-            # screen_x, screen_y = map_to_screen(x_loc, y_loc)
-            #
-            # # Move the mouse to the mapped screen position
-            # mouse.position = (screen_x, screen_y)
+            hand_label, x_loc, y_loc = data.split(',')
+            x_loc, y_loc = float(x_loc), float(y_loc)
+
+            # Map to screen and smooth
+            screen_x, screen_y = map_to_screen(x_loc, y_loc)
+
+            # Debug output
+            print(f"{hand_label} Hand: x={screen_x}, y={screen_y}")
+
+            # Move the mouse
+            mouse.position = (screen_x, screen_y)
     except Exception as e:
         print(f"Error: {e}")
         break
