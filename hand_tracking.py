@@ -54,15 +54,15 @@ while cap.isOpened():
     if results.multi_hand_landmarks:
         h, w, _ = frame.shape  # Get the dimensions of the frame
 
-        INDEX_ID = 8  # use tip of index finger as reference point for movement
-        THUMB_ID = 4  # use tip of thumb & little finger to register mouse clicks
-        LITTLE_ID = 20
+        HAND_ID = 0   # use wrist as basis of movement
+        THUMB_ID = 4  # use tip of thumb & index finger to register mouse clicks
+        INDEX_ID = 8
         THRESH = 20   # distance threshold to register click
 
         for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
             hand_label = hand_info.classification[0].label  # left vs right hand
 
-            loc = hand_landmarks.landmark[INDEX_ID]
+            loc = hand_landmarks.landmark[HAND_ID]
 
             # normalise coordinates between (0,0) and (1,1)
             # flip both axes
@@ -78,7 +78,7 @@ while cap.isOpened():
             # print(f"{hand_label}: x={x_loc:.2f}, y={y_loc:.2f}")
 
             # detect mouse clicks
-            click = dist(hand_landmarks.landmark[THUMB_ID], hand_landmarks.landmark[LITTLE_ID], w, h)
+            click = dist(hand_landmarks.landmark[THUMB_ID], hand_landmarks.landmark[INDEX_ID], w, h)
             if click < THRESH:
                 serial_port.write(b"click\n")
 

@@ -21,7 +21,10 @@ buffer_size = 5
 x_buffer = deque(maxlen=buffer_size)
 y_buffer = deque(maxlen=buffer_size)
 
-def smooth_coordinates(x, y):
+def moving_average(x, y):
+    '''
+    linear interpolation of last N points where N = buffer_size
+    '''
     x_buffer.append(x)
     y_buffer.append(y)
     return sum(x_buffer) / len(x_buffer), sum(y_buffer) / len(y_buffer)
@@ -30,7 +33,7 @@ def map_to_screen(x, y):
     """Map normalized coordinates [0,1] to screen coordinates."""
     screen_x = int(x * screen_width)
     screen_y = int(y * screen_height)
-    return smooth_coordinates(screen_x, screen_y)
+    return moving_average(screen_x, screen_y)
 
 print("Listening for data from Raspberry Pi...")
 
