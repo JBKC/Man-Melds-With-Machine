@@ -7,6 +7,7 @@ Run from Terminal
 import cv2
 import mediapipe as mp
 import serial
+import math
 
 # Initialize serial communication
 serial_port = serial.Serial('/dev/ttyGS0', 9600, timeout=1)
@@ -27,6 +28,14 @@ cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
 
+def dist(lm1, lm2, w, h):
+    '''
+    Calculate Euclidian distance between 2 landmarks
+    '''
+    dx = (lm1.x - lm2.x) * w
+    dy = (lm1.y - lm2.y) * h
+    return math.sqrt(dx ** 2 + dy ** 2)
+
 print("Press 'q' to exit")
 
 while cap.isOpened():
@@ -46,6 +55,8 @@ while cap.isOpened():
         h, w, _ = frame.shape  # Get the dimensions of the frame
 
         INDEX_ID = 8  # use tip of index finger as reference point for movement
+        THUMB_ID = 4  # use tip of thumb to register mouse clicks
+        THRESH = 20   # distance threshold to register click
 
         for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
             hand_label = hand_info.classification[0].label  # left vs right hand
@@ -54,7 +65,7 @@ while cap.isOpened():
 
             # normalise coordinates between (0,0) and (1,1)
             # flip both axes
-            x_loc = loc.x
+            x_loc = 1.0 - loc.x
             y_loc = 1.0 - loc.y          # flip y axis
 
             # handle mirroring
@@ -65,11 +76,17 @@ while cap.isOpened():
 
             print(f"{hand_label}: x={x_loc:.2f}, y={y_loc:.2f}")
 
+            # detect mouse clicks
+            click = dist(loc, hand_landmarks.landmark[THUMB_ID], w, h)
+            if click < THRESH:
+                serial_port.write(b"click\n")
+
             data = f"{hand_label},{x_loc:.2f},{y_loc:.2f}\n"
             serial_port.write(data.encode())
 
+
     # Display the frame
-    # cv2.imshow("Hand Tracking", frame)
+    cv2.imshow("Hand Tracking", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
