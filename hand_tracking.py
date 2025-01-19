@@ -9,10 +9,10 @@ import mediapipe as mp
 import serial
 import math
 
-# Initialize serial communication
+# initialize serial communication
 serial_port = serial.Serial('/dev/ttyGS0', 9600, timeout=1)
 
-# intialise mediapipe
+# initialise mediapipe
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 
@@ -55,7 +55,8 @@ while cap.isOpened():
         h, w, _ = frame.shape  # Get the dimensions of the frame
 
         INDEX_ID = 8  # use tip of index finger as reference point for movement
-        THUMB_ID = 4  # use tip of thumb to register mouse clicks
+        THUMB_ID = 4  # use tip of thumb & little finger to register mouse clicks
+        LITTLE_ID = 20
         THRESH = 20   # distance threshold to register click
 
         for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
@@ -74,10 +75,10 @@ while cap.isOpened():
             else:
                 hand_label = "L"
 
-            print(f"{hand_label}: x={x_loc:.2f}, y={y_loc:.2f}")
+            # print(f"{hand_label}: x={x_loc:.2f}, y={y_loc:.2f}")
 
             # detect mouse clicks
-            click = dist(loc, hand_landmarks.landmark[THUMB_ID], w, h)
+            click = dist(hand_landmarks.landmark[THUMB_ID], hand_landmarks.landmark[LITTLE_ID], w, h)
             if click < THRESH:
                 serial_port.write(b"click\n")
 
@@ -86,7 +87,7 @@ while cap.isOpened():
 
 
     # Display the frame
-    cv2.imshow("Hand Tracking", frame)
+    # cv2.imshow("Hand Tracking", frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break

@@ -10,6 +10,8 @@ from pynput.mouse import Controller, Button
 import time
 import collections
 
+
+
 async def producer(ser, buffer):
 
     print(f'Streaming data....')
