@@ -21,12 +21,13 @@ y_buffer = deque(maxlen=buffer_size)
 
 ########
 
-def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, SENSITIVITY=5, SCALING=50, MIN_STEP=1, MAX_STEP=20, lerp_factor=0.9):
+def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, DAMP=1000, SENSITIVITY=10, SCALING=50, MIN_STEP=1, MAX_STEP=20):
     """
-    Adjust speed of cursor based on distance between current and target position
+    Adjust speed of cursor based on distance between current and target position by calculating a scaling factor
     :param cur_x, cur_y: current coords of cursor
     :param tar_x, tar_y: target coords of cursor
-    :param GAIN: increases step size, meaning faster cursor movement
+    :param GAIN: higher GAIN = bigger step size, meaning faster cursor movement
+    :param DAMP: damping multiplier at small distances - higher DAMP = less static jitter
     :param SENSITIVITY: damping limit - damping applied when distance < SENSITIVITY
     :param SCALING: scales down distances for application of reasonable GAIN / damping values
     :param MAX_STEP: Euclidian distance of maximum step size permitted
@@ -37,16 +38,21 @@ def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, SENSITIVITY=5, SCALING=50
 
     # apply damping to limit step size when distances are very small (reduce static jitter)
     damping = max(1, SENSITIVITY / max(distance, 1e-6))
+    damping *= DAMP if damping > 1 else 1
 
     # calculate scaling factor for cursor steps
     scaling_factor = MIN_STEP + (distance / SCALING) / GAIN / damping
     scaling_factor = min(scaling_factor, MAX_STEP)
 
+    # print(distance)
+    # print(scaling_factor)
+
     # calculate cursor step sizes
     dx = (tar_x - cur_x) / scaling_factor
     dy = (tar_y - cur_y) / scaling_factor
 
-    # return new_x, new_y
+    print(dx)
+
     return cur_x + dx, cur_y + dy
 
 def map_to_screen(x, y):
@@ -124,7 +130,7 @@ while True:
             # cur_x, cur_y = new_x, new_y
 
             mouse.position = (cur_x, cur_y)
-            print(f"{hand_label}: x={int(cur_x)}, y={int(cur_y)}")
+            # print(f"{hand_label}: x={int(cur_x)}, y={int(cur_y)}")
 
         elif data == "click":
             current_time = time.time()
