@@ -56,8 +56,8 @@ while cap.isOpened():
 
         HAND_ID = 9   # experiment with reference point of movement
         THUMB_ID = 4  # use tip of thumb & index finger to register mouse clicks
+        THUMB_J = 3   # joint of thumb as reference for clicks
         INDEX_ID = 8
-        THRESH = 20   # distance threshold to register click
 
         for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
             hand_label = hand_info.classification[0].label  # left vs right hand
@@ -78,7 +78,9 @@ while cap.isOpened():
             # print(f"{hand_label}: x={x_loc:.2f}, y={y_loc:.2f}")
 
             # detect mouse clicks
+            THRESH = dist(hand_landmarks.landmark[THUMB_ID], hand_landmarks.landmark[THUMB_J], w, h)    # distance threshold to register click
             click = dist(hand_landmarks.landmark[THUMB_ID], hand_landmarks.landmark[INDEX_ID], w, h)
+
             if click < THRESH:
                 serial_port.write(b"click\n")
 
