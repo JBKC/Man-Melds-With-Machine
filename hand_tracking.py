@@ -67,7 +67,7 @@ while cap.isOpened():
             # normalise coordinates between (0,0) and (1,1)
             # flip both axes
             x_loc = 1.0 - loc.x
-            y_loc = 1.0 - loc.y          # flip y axis
+            y_loc = 1.0 - loc.y
 
             # handle mirroring
             if hand_label == "Left":
@@ -86,8 +86,9 @@ while cap.isOpened():
             serial_port.write(data.encode())
 
 
-    # Display the frame
-    # cv2.imshow("Hand Tracking", frame)
+    # Display the (mirrored) frame
+    mirror = cv2.flip(frame, 1)
+    cv2.imshow("Hand Tracking", mirror)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
