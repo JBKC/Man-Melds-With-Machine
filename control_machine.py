@@ -21,7 +21,7 @@ y_buffer = deque(maxlen=buffer_size)
 
 ########
 
-def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, SENSITIVITY=5, SCALING=50, MAX_STEP=20, lerp_factor=0.9):
+def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, SENSITIVITY=5, SCALING=50, MIN_STEP=1, MAX_STEP=20, lerp_factor=0.9):
     """
     Adjust speed of cursor based on distance between current and target position
     :param cur_x, cur_y: current coords of cursor
@@ -29,25 +29,22 @@ def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, SENSITIVITY=5, SCALING=50
     :param GAIN: increases step size, meaning faster cursor movement
     :param SENSITIVITY: damping limit - damping applied when distance < SENSITIVITY
     :param SCALING: scales down distances for application of reasonable GAIN / damping values
-    :param max_step: Euclidian distance of maximum step size permitted
+    :param MAX_STEP: Euclidian distance of maximum step size permitted
     """
 
-    # Calculate Euclidian distance between current and target locations
+    # calculate Euclidian distance between current and target locations
     distance = ((tar_x - cur_x) ** 2 + (tar_y - cur_y) ** 2) ** 0.5
 
-    # smaller movements = higher damping
+    # apply damping to limit step size when distances are very small (reduce static jitter)
     damping = max(1, SENSITIVITY / max(distance, 1e-6))
 
     # calculate scaling factor for cursor steps
-    scaling_factor = (distance / SCALING) * GAIN / damping
-    scaling_factor = min(scaling_factor, MAX_STEP)  # Clamp to max_step
-
-    # new_x = lerp(cur_x, tar_x, lerp_factor / speed)
-    # new_y = lerp(cur_y, tar_y, lerp_factor / speed)
+    scaling_factor = MIN_STEP + (distance / SCALING) / GAIN / damping
+    scaling_factor = min(scaling_factor, MAX_STEP)
 
     # calculate cursor step sizes
-    dx = (tar_x - cur_x) * scaling_factor
-    dy = (tar_y - cur_y) * scaling_factor
+    dx = (tar_x - cur_x) / scaling_factor
+    dy = (tar_y - cur_y) / scaling_factor
 
     # return new_x, new_y
     return cur_x + dx, cur_y + dy
@@ -110,21 +107,21 @@ while True:
         data = serial_port.readline().decode().strip()
 
         if "," in data:
-            # read (x,y) coords
+            # read input x,y coords
             hand_label, x_loc, y_loc = data.split(',')
             x_loc, y_loc = float(x_loc), 1.0 - float(y_loc)             # flip y axis
 
             # convert to screen coordinates
             tar_x, tar_y = map_to_screen(x_loc, y_loc)
 
-            # velocity smoothing to create smooth movement
-            new_x, new_y = velocity_scale(cur_x, cur_y, tar_x, tar_y)
+            # velocity scaling to create smooth movement
+            cur_x, cur_y = velocity_scale(cur_x, cur_y, tar_x, tar_y)
 
             # interpolate cursor position to create smooth visuals during movement
             # interpolate(cur_x, cur_y, tar_x, tar_y)
 
             # update current position
-            cur_x, cur_y = new_x, new_y
+            # cur_x, cur_y = new_x, new_y
 
             mouse.position = (cur_x, cur_y)
             print(f"{hand_label}: x={int(cur_x)}, y={int(cur_y)}")
