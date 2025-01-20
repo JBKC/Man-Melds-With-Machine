@@ -1,9 +1,9 @@
 import serial
-import pyautogui
 from pynput.mouse import Controller, Button
 from screeninfo import get_monitors
 from collections import deque
 import time
+import sys
 
 # Initialize
 serial_port = serial.Serial('/dev/tty.usbmodem14101', 9600, timeout=1)
@@ -133,6 +133,10 @@ while True:
                 last_click = current_time
             else:
                 print("Double click blocked")
+
+        elif data == "stop":
+            sys.exit()
+
 
     except Exception as e:
         print(f"Error: {e}")
