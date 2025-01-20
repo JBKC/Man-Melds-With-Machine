@@ -21,38 +21,6 @@ y_buffer = deque(maxlen=buffer_size)
 
 ########
 
-def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=250, DAMP=1000, SENSITIVITY=10, MIN_STEP=1, MAX_STEP=20):
-    """
-    Adjust speed of cursor based on distance between current and target position by calculating a scaling factor
-    :param cur_x, cur_y: current coords of cursor
-    :param tar_x, tar_y: target coords of cursor
-    :param GAIN: higher GAIN = bigger step size, meaning faster cursor movement
-    :param DAMP: damping multiplier at small distances - higher DAMP = smaller step sizes = less static jitter
-    :param SENSITIVITY: damping limit - damping applied when distance < SENSITIVITY
-    :param MAX_STEP: Euclidian distance of maximum step size permitted
-    """
-
-    # calculate Euclidian distance between current and target locations
-    distance = ((tar_x - cur_x) ** 2 + (tar_y - cur_y) ** 2) ** 0.5
-
-    # apply damping to limit step size when distances are very small (reduce static jitter)
-    damping = max(1, SENSITIVITY / max(distance, 1e-6))
-    damping *= DAMP if damping > 1 else 1
-
-    # calculate scaling factor for cursor steps
-    scaling_factor = MIN_STEP + (distance / GAIN) * damping
-    # scaling_factor = min(scaling_factor, MAX_STEP)
-
-    # print(damping, distance, scaling_factor)
-
-    # calculate cursor step sizes
-    dx = (tar_x - cur_x) / scaling_factor
-    dy = (tar_y - cur_y) / scaling_factor
-
-    # print(dx)
-
-    return cur_x + dx, cur_y + dy
-
 def map_to_screen(x, y):
     """
     Map normalized coordinates (0,1) to screen coordinates
@@ -71,18 +39,52 @@ def map_to_screen(x, y):
     screen_y = zoom(y, screen_height)
     return screen_x, screen_y
 
+def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=250, DAMP=50, SENSITIVITY=10, MIN_STEP=1):
+    """
+    Adjust speed of cursor based on distance between current and target position by calculating a scaling factor
+    :param cur_x, cur_y: current coords of cursor
+    :param tar_x, tar_y: target coords of cursor
+    :param GAIN: higher GAIN = bigger step size, meaning faster cursor movement
+    :param DAMP: damping multiplier at small distances - higher DAMP = smaller step sizes = less static jitter
+    :param SENSITIVITY: damping limit - damping applied when distance < SENSITIVITY
+    :param MIN_STEP: Stops division by zero
+    """
+
+    # calculate Euclidian distance between current and target locations
+    distance = ((tar_x - cur_x) ** 2 + (tar_y - cur_y) ** 2) ** 0.5
+
+    # apply damping to limit step size when distances are very small (reduce static jitter)
+    damping = max(1, SENSITIVITY / max(distance, 1e-6))
+    damping *= DAMP if damping > 1 else 1
+
+    # calculate scaling factor for cursor steps
+    scaling_factor = MIN_STEP + (distance / GAIN) * damping
+    # print(damping, distance, scaling_factor)
+
+    # calculate cursor step sizes
+    dx = (tar_x - cur_x) / scaling_factor
+    dy = (tar_y - cur_y) / scaling_factor
+
+    # calculate new (intermediate) positions
+    new_x = cur_x + dx
+    new_y = cur_y + dy
+
+    # interpolate movement for large distances only
+    if distance > SENSITIVITY:
+        # interpolate(new_x, new_y, tar_x, tar_y)
+        mouse.position = (new_x, new_y)
+    else:
+        mouse.position = (new_x, new_y)
+
+    # must return values to loop
+    return new_x, new_y
+
+
 def lerp(start, end, factor):
     '''Linear interpolation between start (current) and end (target) points'''
     return start + (end - start) * factor
 
-def moving_average(x, y):
-    '''Moving average of last N points where N = buffer_size'''
-    x_buffer.append(x)
-    y_buffer.append(y)
-    return sum(x_buffer) / len(x_buffer), sum(y_buffer) / len(y_buffer)
-
-
-def interpolate(start_x, start_y, end_x, end_y, steps=10, delay=0.005):
+def interpolate(start_x, start_y, end_x, end_y, steps=20, delay=0.005):
     """Interpolates between current and target positions to fill the visual gaps of the cursor"""
     for i in range(1, steps + 1):
         # Interpolate between start and end positions
@@ -101,7 +103,7 @@ cur_x, cur_y = 0, 0
 
 # initialise mouse clicks
 last_click = 0
-cooldown = 0.2          # seconds
+cooldown = 0.5          # seconds
 
 print("Listening for data from Raspberry Pi...")
 
@@ -118,17 +120,10 @@ while True:
             # convert to screen coordinates
             tar_x, tar_y = map_to_screen(x_loc, y_loc)
 
-            # velocity scaling to create smooth movement
+            # velocity scaling to create smooth movement & move cursor
             cur_x, cur_y = velocity_scale(cur_x, cur_y, tar_x, tar_y)
 
-            # interpolate cursor position to create smooth visuals during movement
-            # interpolate(cur_x, cur_y, tar_x, tar_y)
-
-            # update current position
-            # cur_x, cur_y = new_x, new_y
-
-            mouse.position = (cur_x, cur_y)
-            # print(f"{hand_label}: x={int(cur_x)}, y={int(cur_y)}")
+            print(f"{hand_label}: x={int(cur_x)}, y={int(cur_y)}")
 
         elif data == "click":
             current_time = time.time()
@@ -142,3 +137,4 @@ while True:
     except Exception as e:
         print(f"Error: {e}")
         break
+
