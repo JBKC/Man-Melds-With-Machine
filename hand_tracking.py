@@ -54,15 +54,22 @@ while cap.isOpened():
     if results.multi_hand_landmarks:
         h, w, _ = frame.shape  # Get the dimensions of the frame
 
-        HAND_ID = 9   # experiment with reference point of movement
-        THUMB_ID = 4  # use tip of thumb & index finger to register mouse clicks
+        # control commands
+        MOVE_ID = 9   # experiment with reference point of movement
+        THUMB_TIP = 4
+        INDEX_TIP = 8
         THUMB_J = 3   # joint of thumb as reference for clicks
-        INDEX_ID = 8
+
+        # closed fist commands
+        MIDDLE_TIP = 12
+        RING_TIP = 16
+        LITTLE_TIP = 20
+        WRIST = 0
 
         for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
             hand_label = hand_info.classification[0].label  # left vs right hand
 
-            loc = hand_landmarks.landmark[HAND_ID]
+            loc = hand_landmarks.landmark[MOVE_ID]
 
             # normalise coordinates between (0,0) and (1,1)
             # flip both axes
@@ -77,12 +84,25 @@ while cap.isOpened():
 
             # print(f"{hand_label}: x={x_loc:.2f}, y={y_loc:.2f}")
 
-            # detect mouse clicks
-            THRESH = dist(hand_landmarks.landmark[THUMB_ID], hand_landmarks.landmark[THUMB_J], w, h)    # distance threshold to register click
-            click = dist(hand_landmarks.landmark[THUMB_ID], hand_landmarks.landmark[INDEX_ID], w, h)
-
-            if click < THRESH:
+            # click = touch tips of thumb and index finger
+            THRESH = dist(hand_landmarks.landmark[THUMB_TIP], hand_landmarks.landmark[THUMB_J], w, h)    # distance threshold to register click
+            click = dist(hand_landmarks.landmark[THUMB_TIP], hand_landmarks.landmark[INDEX_TIP], w, h)
+            if THRESH > click:
                 serial_port.write(b"click\n")
+
+            # exit code = close fist
+            HAND_SIZE = dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[MOVE_ID], w, h)
+            if (
+                    HAND_SIZE >
+                    dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[INDEX_TIP], w, h) and
+                    HAND_SIZE >
+                    dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[MIDDLE_TIP], w, h) and
+                    HAND_SIZE >
+                    dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[RING_TIP], w, h) and
+                    HAND_SIZE >
+                    dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[LITTLE_TIP], w, h)
+            ):
+                serial_port.write(b"stop\n")
 
             data = f"{hand_label},{x_loc:.4f},{y_loc:.4f}\n"
             serial_port.write(data.encode())

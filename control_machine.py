@@ -71,8 +71,8 @@ def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=250, DAMP=50, SENSITIVITY=10
 
     # interpolate movement for large distances only
     if distance > SENSITIVITY:
-        # interpolate(new_x, new_y, tar_x, tar_y)
-        mouse.position = (new_x, new_y)
+        interpolate(cur_x, cur_y, new_x, new_y)
+        # mouse.position = (new_x, new_y)
     else:
         mouse.position = (new_x, new_y)
 
