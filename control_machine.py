@@ -45,11 +45,10 @@ def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=1, scaling=50, min_speed=1, 
     # Calculate Euclidian distance to the target
     distance = ((tar_x - cur_x) ** 2 + (tar_y - cur_y) ** 2) ** 0.5
 
-
     # Determine scaling factor (speed increases with distance)
     speed = min_speed + (distance / scaling) / GAIN
     speed = min(speed, max_speed)  # Clamp to max_speed
-    print(f'speed: {speed}, distance: {distance}')
+    # print(f'speed: {speed}, distance: {distance}')
 
     # Update current position with scaled movement
     # creates smaller step sizes at fast speed (for smooth movement) and larger step sizes at slow speed (for precision)
@@ -74,6 +73,10 @@ def interpolate(start_x, start_y, end_x, end_y, steps=10, delay=0.005):
 
 # initialise current cursor position
 cur_x, cur_y = 0, 0
+
+# initialise mouse clicks
+last_click = 0
+cooldown = 0.2          # seconds
 
 print("Listening for data from Raspberry Pi...")
 
@@ -103,8 +106,13 @@ while True:
             # print(f"{hand_label}: x={int(cur_x)}, y={int(cur_y)}")
 
         elif data == "click":
-            mouse.click(Button.left)
-            print("CLICK")
+            current_time = time.time()
+            if current_time - last_click > cooldown:
+                mouse.click(Button.left)
+                print("CLICK")
+                last_click = current_time
+            else:
+                print("Double click blocked")
 
     except Exception as e:
         print(f"Error: {e}")
