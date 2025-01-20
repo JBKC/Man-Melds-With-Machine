@@ -21,15 +21,14 @@ y_buffer = deque(maxlen=buffer_size)
 
 ########
 
-def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, DAMP=1000, SENSITIVITY=10, SCALING=50, MIN_STEP=1, MAX_STEP=20):
+def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=250, DAMP=1000, SENSITIVITY=10, MIN_STEP=1, MAX_STEP=20):
     """
     Adjust speed of cursor based on distance between current and target position by calculating a scaling factor
     :param cur_x, cur_y: current coords of cursor
     :param tar_x, tar_y: target coords of cursor
     :param GAIN: higher GAIN = bigger step size, meaning faster cursor movement
-    :param DAMP: damping multiplier at small distances - higher DAMP = less static jitter
+    :param DAMP: damping multiplier at small distances - higher DAMP = smaller step sizes = less static jitter
     :param SENSITIVITY: damping limit - damping applied when distance < SENSITIVITY
-    :param SCALING: scales down distances for application of reasonable GAIN / damping values
     :param MAX_STEP: Euclidian distance of maximum step size permitted
     """
 
@@ -41,17 +40,16 @@ def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, DAMP=1000, SENSITIVITY=10
     damping *= DAMP if damping > 1 else 1
 
     # calculate scaling factor for cursor steps
-    scaling_factor = MIN_STEP + (distance / SCALING) / GAIN / damping
-    scaling_factor = min(scaling_factor, MAX_STEP)
+    scaling_factor = MIN_STEP + (distance / GAIN) * damping
+    # scaling_factor = min(scaling_factor, MAX_STEP)
 
-    # print(distance)
-    # print(scaling_factor)
+    # print(damping, distance, scaling_factor)
 
     # calculate cursor step sizes
     dx = (tar_x - cur_x) / scaling_factor
     dy = (tar_y - cur_y) / scaling_factor
 
-    print(dx)
+    # print(dx)
 
     return cur_x + dx, cur_y + dy
 
