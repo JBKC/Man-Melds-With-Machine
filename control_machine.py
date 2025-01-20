@@ -30,12 +30,24 @@ def moving_average(x, y):
     return sum(x_buffer) / len(x_buffer), sum(y_buffer) / len(y_buffer)
 
 def map_to_screen(x, y):
-    """Map normalized coordinates (0,1) to screen coordinates."""
-    screen_x = int(x * screen_width)
-    screen_y = int(y * screen_height)
+    """
+    Map normalized coordinates (0,1) to screen coordinates
+    Includes zoom to avoid edge effects
+    """
+    def zoom(value, screen_size):
+        if value < 0.2:
+            return 0  # Minimum screen coordinate
+        elif value > 0.8:
+            return screen_size  # Maximum screen coordinate
+        else:
+            # interpolate
+            return int(((value - 0.2) / 0.6) * screen_size)
+
+    screen_x = zoom(x, screen_width)
+    screen_y = zoom(y, screen_height)
     return screen_x, screen_y
 
-def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=1, scaling=50, min_speed=1, max_speed=20):
+def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, scaling=50, min_speed=1, max_speed=20, DAMPING=20):
     """
     Adjust movement speed based on the distance to the target
     :param GAIN: multiplier on the speed of movement (high = faster)
@@ -45,8 +57,12 @@ def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=1, scaling=50, min_speed=1, 
     # Calculate Euclidian distance to the target
     distance = ((tar_x - cur_x) ** 2 + (tar_y - cur_y) ** 2) ** 0.5
 
-    # Determine scaling factor (speed increases with distance)
-    speed = min_speed + (distance / scaling) / GAIN
+    # apply damping to small movements
+    # small distance = high damping = high speed = small step sizes
+    damping = max(1, DAMPING / max(distance, 1e-6))
+
+    # infer speed of cursor
+    speed = min_speed + (distance / scaling) / GAIN / damping
     speed = min(speed, max_speed)  # Clamp to max_speed
     # print(f'speed: {speed}, distance: {distance}')
 
@@ -57,7 +73,7 @@ def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=1, scaling=50, min_speed=1, 
 
     return cur_x + dx, cur_y + dy
 
-def interpolate(start_x, start_y, end_x, end_y, steps=10, delay=0.005):
+def interpolate(start_x, start_y, end_x, end_y, steps=20, delay=0.005):
     """Interpolates between current and target positions to fill the visual gaps of the cursor"""
     for i in range(1, steps + 1):
         # Interpolate between start and end positions
