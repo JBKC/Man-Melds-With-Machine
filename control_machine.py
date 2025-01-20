@@ -47,7 +47,7 @@ def map_to_screen(x, y):
     screen_y = zoom(y, screen_height)
     return screen_x, screen_y
 
-def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, scaling=50, min_speed=1, max_speed=20, DAMPING=20):
+def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, scaling=50, min_speed=1, max_speed=20, DAMPING=0):
     """
     Adjust movement speed based on the distance to the target
     :param GAIN: multiplier on the speed of movement (high = faster)
@@ -119,7 +119,7 @@ while True:
             cur_x, cur_y = new_x, new_y
 
             mouse.position = (cur_x, cur_y)
-            # print(f"{hand_label}: x={int(cur_x)}, y={int(cur_y)}")
+            print(f"{hand_label}: x={int(cur_x)}, y={int(cur_y)}")
 
         elif data == "click":
             current_time = time.time()

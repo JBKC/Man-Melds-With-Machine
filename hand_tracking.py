@@ -54,7 +54,7 @@ while cap.isOpened():
     if results.multi_hand_landmarks:
         h, w, _ = frame.shape  # Get the dimensions of the frame
 
-        HAND_ID = 0   # use wrist as basis of movement
+        HAND_ID = 9   # experiment with reference point of movement
         THUMB_ID = 4  # use tip of thumb & index finger to register mouse clicks
         INDEX_ID = 8
         THRESH = 20   # distance threshold to register click
@@ -84,6 +84,8 @@ while cap.isOpened():
 
             data = f"{hand_label},{x_loc:.2f},{y_loc:.2f}\n"
             serial_port.write(data.encode())
+
+            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
 
     # Display the (mirrored) frame
