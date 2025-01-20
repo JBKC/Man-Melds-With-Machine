@@ -84,7 +84,7 @@ while cap.isOpened():
             if click < THRESH:
                 serial_port.write(b"click\n")
 
-            data = f"{hand_label},{x_loc:.2f},{y_loc:.2f}\n"
+            data = f"{hand_label},{x_loc:.4f},{y_loc:.4f}\n"
             serial_port.write(data.encode())
 
             mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)

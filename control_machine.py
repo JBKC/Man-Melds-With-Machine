@@ -14,20 +14,43 @@ primary_monitor = monitors[0]
 screen_width = primary_monitor.width
 screen_height = primary_monitor.height
 
-# Smoothing buffers (optional)
+# Smoothing buffers for moving average
 buffer_size = 3
 x_buffer = deque(maxlen=buffer_size)
 y_buffer = deque(maxlen=buffer_size)
 
-def lerp(start, end, factor):
-    '''Linear interpolation between start (current) and end (target) points'''
-    return start + (end - start) * factor
+########
 
-def moving_average(x, y):
-    '''Moving average of last N points where N = buffer_size'''
-    x_buffer.append(x)
-    y_buffer.append(y)
-    return sum(x_buffer) / len(x_buffer), sum(y_buffer) / len(y_buffer)
+def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, SENSITIVITY=5, SCALING=50, MAX_STEP=20, lerp_factor=0.9):
+    """
+    Adjust speed of cursor based on distance between current and target position
+    :param cur_x, cur_y: current coords of cursor
+    :param tar_x, tar_y: target coords of cursor
+    :param GAIN: increases step size, meaning faster cursor movement
+    :param SENSITIVITY: damping limit - damping applied when distance < SENSITIVITY
+    :param SCALING: scales down distances for application of reasonable GAIN / damping values
+    :param max_step: Euclidian distance of maximum step size permitted
+    """
+
+    # Calculate Euclidian distance between current and target locations
+    distance = ((tar_x - cur_x) ** 2 + (tar_y - cur_y) ** 2) ** 0.5
+
+    # smaller movements = higher damping
+    damping = max(1, SENSITIVITY / max(distance, 1e-6))
+
+    # calculate scaling factor for cursor steps
+    scaling_factor = (distance / SCALING) * GAIN / damping
+    scaling_factor = min(scaling_factor, MAX_STEP)  # Clamp to max_step
+
+    # new_x = lerp(cur_x, tar_x, lerp_factor / speed)
+    # new_y = lerp(cur_y, tar_y, lerp_factor / speed)
+
+    # calculate cursor step sizes
+    dx = (tar_x - cur_x) * scaling_factor
+    dy = (tar_y - cur_y) * scaling_factor
+
+    # return new_x, new_y
+    return cur_x + dx, cur_y + dy
 
 def map_to_screen(x, y):
     """
@@ -47,33 +70,18 @@ def map_to_screen(x, y):
     screen_y = zoom(y, screen_height)
     return screen_x, screen_y
 
-def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=5, scaling=50, min_speed=1, max_speed=20, DAMPING=0):
-    """
-    Adjust movement speed based on the distance to the target
-    :param GAIN: multiplier on the speed of movement (high = faster)
-    :param FRICTION:
-    :param scaling: scale down speed as a function of distance
-    """
-    # Calculate Euclidian distance to the target
-    distance = ((tar_x - cur_x) ** 2 + (tar_y - cur_y) ** 2) ** 0.5
+def lerp(start, end, factor):
+    '''Linear interpolation between start (current) and end (target) points'''
+    return start + (end - start) * factor
 
-    # apply damping to small movements
-    # small distance = high damping = high speed = small step sizes
-    damping = max(1, DAMPING / max(distance, 1e-6))
+def moving_average(x, y):
+    '''Moving average of last N points where N = buffer_size'''
+    x_buffer.append(x)
+    y_buffer.append(y)
+    return sum(x_buffer) / len(x_buffer), sum(y_buffer) / len(y_buffer)
 
-    # infer speed of cursor
-    speed = min_speed + (distance / scaling) / GAIN / damping
-    speed = min(speed, max_speed)  # Clamp to max_speed
-    # print(f'speed: {speed}, distance: {distance}')
 
-    # Update current position with scaled movement
-    # creates smaller step sizes at fast speed (for smooth movement) and larger step sizes at slow speed (for precision)
-    dx = (tar_x - cur_x) / speed
-    dy = (tar_y - cur_y) / speed
-
-    return cur_x + dx, cur_y + dy
-
-def interpolate(start_x, start_y, end_x, end_y, steps=20, delay=0.005):
+def interpolate(start_x, start_y, end_x, end_y, steps=10, delay=0.005):
     """Interpolates between current and target positions to fill the visual gaps of the cursor"""
     for i in range(1, steps + 1):
         # Interpolate between start and end positions
@@ -113,7 +121,7 @@ while True:
             new_x, new_y = velocity_scale(cur_x, cur_y, tar_x, tar_y)
 
             # interpolate cursor position to create smooth visuals during movement
-            interpolate(cur_x, cur_y, new_x, new_y, steps=5, delay=0.005)
+            # interpolate(cur_x, cur_y, tar_x, tar_y)
 
             # update current position
             cur_x, cur_y = new_x, new_y
