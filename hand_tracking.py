@@ -23,10 +23,21 @@ hands = mp_hands.Hands(
     min_tracking_confidence=0.5,
 )
 
-# open camera
-cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+cap = cv2.VideoCapture(0, cv2.CAP_V4L2)  # Use V4L2 backend explicitly
+
+# downsample to 16:9 format
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 270)
+cap.set(cv2.CAP_PROP_FPS, 30)
+cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)                 # low latency
+
+# open in fullscreen
+window_name = "Hand Tracking"
+cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
+cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+previous_data = None
+
 
 def dist(lm1, lm2, w, h):
     '''
@@ -36,7 +47,9 @@ def dist(lm1, lm2, w, h):
     dy = (lm1.y - lm2.y) * h
     return math.sqrt(dx ** 2 + dy ** 2)
 
-print("Press 'q' to exit")
+# if not cap.isOpened():
+#     print("Error: GStreamer pipeline not working")
+#     exit()
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -44,13 +57,10 @@ while cap.isOpened():
         print("Failed to grab frame")
         break
 
-    # Convert the frame to RGB
-    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-    # Process the frame to detect hands
-    results = hands.process(rgb_frame)
-
-    # Get hand locations
+    # # Process the frame to detect hands
+    results = hands.process(frame)
+    #
+    # # Get hand locations
     if results.multi_hand_landmarks:
         h, w, _ = frame.shape  # Get the dimensions of the frame
 
@@ -104,15 +114,16 @@ while cap.isOpened():
             ):
                 serial_port.write(b"stop\n")
 
-            data = f"{hand_label},{x_loc:.4f},{y_loc:.4f}\n"
-            serial_port.write(data.encode())
+            data = f"{hand_label},{x_loc:.3f},{y_loc:.3f}\n"
+            if data != previous_data:
+                serial_port.write(data.encode())
 
-            mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+            # mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
 
     # Display the (mirrored) frame
-    mirror = cv2.flip(frame, 1)
-    cv2.imshow("Hand Tracking", mirror)
+    # mirror = cv2.flip(frame, 1)
+    # cv2.imshow(window_name, mirror)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
