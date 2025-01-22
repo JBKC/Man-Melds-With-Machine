@@ -18,7 +18,6 @@ serial_port = serial.Serial('/dev/ttyGS0', 115200, timeout=1)
 # initialise mediapipe
 mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
-
 hands = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=2,
@@ -26,13 +25,24 @@ hands = mp_hands.Hands(
     min_tracking_confidence=0.5,
 )
 
+HAND_LANDMARKS = {
+    'MOVE_ID': 9,                   # reference point of movement (base of third finger)
+    'THUMB_TIP': 4,
+    'INDEX_TIP': 8,
+    'THUMB_J': 3,                   # reference for cliks (joint of thumb)
+    'MIDDLE_TIP': 12,
+    'RING_TIP': 16,
+    'LITTLE_TIP': 20,
+    'WRIST': 0,
+}
+FRAME_SIZE = {'width': 480, 'height': 270}
+
+# intialise camera & optimise
 cap = cv2.VideoCapture(0, cv2.CAP_V4L2)  # Use V4L2 backend explicitly
-# downsample to 16:9 format
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 480)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 270)
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
 cap.set(cv2.CAP_PROP_FPS, 30)
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)                 # low latency
-
 # open in fullscreen
 # window_name = "Hand Tracking"
 # cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
@@ -40,6 +50,7 @@ cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)                 # low latency
 
 previous_data = None
 executor = ThreadPoolExecutor()
+
 
 def dist(lm1, lm2, w, h):
     '''
@@ -69,20 +80,6 @@ async def send_data(result_queue):
 
     global previous_data        # simple check to stop duplication of data for efficiency
 
-    w, h = 480, 270  # fixed frame size
-    # control commands
-    MOVE_ID = 9  # experiment with reference point of movement
-    THUMB_TIP = 4
-    INDEX_TIP = 8
-    THUMB_J = 3  # joint of thumb as reference for clicks
-    # closed fist commands
-    MIDDLE_TIP = 12
-    RING_TIP = 16
-    LITTLE_TIP = 20
-    WRIST = 0
-
-    ## move all these to a dictionary???^^^
-
     while True:
         results = await result_queue.get()          # retrieve landmarks from Asyncio queue
         if results is None:
@@ -96,12 +93,12 @@ async def send_data(result_queue):
                 hand_label = 'R' if hand_info.classification[0].label == "Left" else 'L'
 
                 # reference point for hand movement
-                loc = hand_landmarks.landmark[MOVE_ID]
+                loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
                 # normalise coords and flip axes
                 x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
 
                 # scale floats to integers for efficient sending over serial
-                x_loc *= int(x_loc * 1000)
+                x_loc = int(x_loc * 1000)
                 y_loc = int(y_loc * 1000)
 
                 print(f"{hand_label}: x={x_loc}, y={y_loc}")
@@ -118,23 +115,35 @@ async def send_data(result_queue):
 
                 ## CASE 1 -> click detected (click = touch tips of thumb and index finger)
                 # set distance threshold to register click
-                THRESH = dist(hand_landmarks.landmark[THUMB_TIP], hand_landmarks.landmark[THUMB_J], w, h)
-                click = dist(hand_landmarks.landmark[THUMB_TIP], hand_landmarks.landmark[INDEX_TIP], w, h)
-
+                THRESH = dist(
+                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']],
+                    FRAME_SIZE['width'], FRAME_SIZE['height'])
+                click = dist(
+                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                    hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                    FRAME_SIZE['width'], FRAME_SIZE['height'])
                 if THRESH > click:
                     serial_port.write(b'C')
 
                 ## CASE 2 -> exit (exit = close fist)
-                HAND_SIZE = dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[MOVE_ID], w, h)
+                HAND_SIZE = dist(
+                    hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                    hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']],
+                    FRAME_SIZE['width'], FRAME_SIZE['height'])
                 if (
-                        HAND_SIZE >
-                        dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[INDEX_TIP], w, h) and
-                        HAND_SIZE >
-                        dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[MIDDLE_TIP], w, h) and
-                        HAND_SIZE >
-                        dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[RING_TIP], w, h) and
-                        HAND_SIZE >
-                        dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[LITTLE_TIP], w, h)
+                    HAND_SIZE >
+                    dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']], hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                         FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                    HAND_SIZE >
+                    dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']], hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                         FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                    HAND_SIZE >
+                    dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']], hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                         FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                    HAND_SIZE >
+                    dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']], hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                         FRAME_SIZE['width'], FRAME_SIZE['height'])
                 ):
                     serial_port.write(b'E')
 
