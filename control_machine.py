@@ -48,7 +48,7 @@ def map_to_screen(loc):
     screen_y = int(zoom(loc[1], SCREEN_HEIGHT))
     return [screen_x, screen_y]
 
-def velocity_scale(cur, tar, GAIN=1000, DAMP=50, SENSITIVITY=5, MIN_STEP=1):
+def velocity_scale(cur, tar, GAIN=500000, DAMP=20, SENSITIVITY=10, MIN_STEP=1):
     """
     Adjust speed of cursor based on distance between current and target position by calculating a scaling factor
     :param cur: current [x,y] coords of cursor
@@ -80,6 +80,8 @@ def velocity_scale(cur, tar, GAIN=1000, DAMP=50, SENSITIVITY=5, MIN_STEP=1):
     # interpolate movement for large distances only
     if distance > SENSITIVITY:
         interpolate(cur, new)
+        # mouse.position = (new[0], new[1])
+
     else:
         mouse.position = (new[0], new[1])
 
@@ -92,7 +94,10 @@ def lerp(start, end, factor):
     return start + (end - start) * factor
 
 def interpolate(start, end, steps=20, delay=0.005):
-    """Interpolates between current and target positions to fill the visual gaps of the cursor"""
+    """
+    Interpolates between current and target positions to fill the visual gaps of the cursor
+    More steps = smoother mouse cursor but more perceived lag
+    """
     for i in range(1, steps + 1):
         # Interpolate between start and end positions
         interp_x = lerp(start[0], end[0], i / steps)
@@ -151,8 +156,8 @@ async def process_data(data_queue, cur):
                 cur = velocity_scale(cur, tar)
 
                 ### no velocity scaling option
-                cur = map_to_screen(loc)
-                mouse.position = (cur[0], cur[1])
+                # cur = map_to_screen(loc)
+                # mouse.position = (cur[0], cur[1])
 
                 print(f"{hand_label.decode()}: x={int(cur[0])}, y={int(cur[1])}")
 
