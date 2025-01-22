@@ -13,8 +13,8 @@ import struct
 mouse = Controller()
 monitors = get_monitors()
 primary_monitor = monitors[0]
-screen_width = primary_monitor.width
-screen_height = primary_monitor.height
+SCREEN_WIDTH = primary_monitor.width / 1000         # divide by 1000 to convert data received over serial
+SCREEN_HEIGHT = primary_monitor.height / 1000
 
 # Smoothing buffers for moving average
 buffer_size = 3
@@ -32,20 +32,20 @@ class StopException(Exception):
 
 def map_to_screen(x, y):
     """
-    Map normalized coordinates (0,1) to screen coordinates
+    Map integer coordinates received over serial (in range 0->1000) to screen coordinates
     Includes zoom to avoid edge effects
     """
     def zoom(value, screen_size):
-        if value < 0.2:
+        if value < 200:
             return 0  # Minimum screen coordinate
-        elif value > 0.8:
+        elif value > 800:
             return screen_size  # Maximum screen coordinate
         else:
             # interpolate
-            return int(((value - 0.2) / 0.6) * screen_size)
+            return int(((value - 200) / 600) * screen_size)
 
-    screen_x = zoom(x, screen_width)
-    screen_y = zoom(y, screen_height)
+    screen_x = int(zoom(x, SCREEN_WIDTH))
+    screen_y = int(zoom(y, SCREEN_HEIGHT))
     return screen_x, screen_y
 
 def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=1000, DAMP=50, SENSITIVITY=5, MIN_STEP=1):
@@ -90,7 +90,7 @@ def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=1000, DAMP=50, SENSITIVITY=5
 
 
 def lerp(start, end, factor):
-    '''Linear interpolation between start (current) and end (target) points'''
+    """Linear interpolation between start (current) and end (target) points"""
     return start + (end - start) * factor
 
 def interpolate(start_x, start_y, end_x, end_y, steps=20, delay=0.005):
@@ -107,57 +107,71 @@ def interpolate(start_x, start_y, end_x, end_y, steps=20, delay=0.005):
         time.sleep(delay)
 
 async def read_serial(serial_reader, data_queue):
-    """Read data asynchronously from the serial port."""
+    """
+    Read data asynchronously from the serial port
+    Protocol = 2 bytes for command (1 char + newline), 6 bytes for movement (1 char + 2 int + newline)
+    """
+    buffer = b''  # store packets as they come in
+
     while True:
         try:
-            # read first byte to determine the packet type
-            packet_type = await serial_reader.read(1)
-            if not packet_type:
-                continue  # Skip empty reads
+            # read 6 byte chunk of data
+            chunk = await serial_reader.read(6)
+            buffer += chunk
 
-            if packet_type in (b'C', b'E'):  # command packet
-                await data_queue.put(packet_type)  # Send the command directly
+            # Process complete packets (ending with newline)
+            while b'\n' in buffer:
+                line, buffer = buffer.split(b'\n', 1)  # Split at the first newline
+                if len(line) > 0:
+                    await data_queue.put(line)  # Queue the complete packet
 
-            else:  # movement packet
-                # read the remaining 4 bytes (2 unsigned shorts for x, y)
-                payload = await serial_reader.read(4)
-                if len(payload) == 4:
-                    data_queue.put(packet_type + payload)  # combine and queue the full packet
         except Exception as e:
             print(f"Error reading serial data: {e}")
             break
 
 async def process_data(data_queue, cur_x, cur_y):
     """Process serial data and perform cursor actions"""
+
     global last_click
 
     while True:
+        # Get the next packet from the queue
         data = await data_queue.get()
 
-        if "," in data:
-            # read input x,y coords
-            hand_label, x_loc, y_loc = data.split(',')
-            x_loc, y_loc = float(x_loc), 1.0 - float(y_loc)             # flip y axis
+        # Read movement packets
+        if len(data) == 5:  # Movement packet: 1 char + 2 unsigned integers
+            try:
+                # Unpack binary data (1 char + 2 unsigned integers)
+                hand_label, x_loc, y_loc = struct.unpack('=c2H', data)
 
-            # convert to screen coordinates
-            tar_x, tar_y = map_to_screen(x_loc, y_loc)
+                # Flip y-axis
+                # x_loc, y_loc = int(x_loc), 1000 - int(y_loc)
+                # print(f"{hand_label.decode()}: x={int(x_loc)}, y={int(y_loc)}")
 
-            # velocity scaling to create smooth movement & move cursor
-            cur_x, cur_y = velocity_scale(cur_x, cur_y, tar_x, tar_y)
+                # Convert to screen coordinates
+                tar_x, tar_y = map_to_screen(x_loc, y_loc)
+                print(f"{hand_label.decode()}: x={int(tar_x)}, y={int(tar_y)}")
 
-            print(f"{hand_label}: x={int(cur_x)}, y={int(cur_y)}")
 
-        elif data == "click":
-            current_time = time.time()
-            if current_time - last_click > cooldown:
-                mouse.click(Button.left)
-                print("CLICK")
-                last_click = current_time
-            else:
-                print("Double click blocked")
+                # Velocity scaling and move cursor
+                cur_x, cur_y = velocity_scale(cur_x, cur_y, tar_x, tar_y)
+            except Exception as e:
+                print(f"Error processing movement data: {e}")
 
-        elif data == "stop":
-            raise StopException()
+        # Read command packets
+        elif len(data) == 1:  # Command packet: 1 byte
+            command = data
+            if command == b'C':  # Click command
+                current_time = time.time()
+                if current_time - last_click > cooldown:
+                    mouse.click(Button.left)
+                    print("CLICK")
+                    last_click = current_time
+                else:
+                    print("Double click blocked")
+            elif command == b'E':  # Exit command
+                raise StopException()
+
 
 async def main():
     """Main event loop."""

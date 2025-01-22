@@ -101,14 +101,15 @@ async def send_data(result_queue):
                 x_loc = int(x_loc * 1000)
                 y_loc = int(y_loc * 1000)
 
-                print(f"{hand_label}: x={x_loc}, y={y_loc}")
+                # print(f"{hand_label}: x={x_loc}, y={y_loc}")
 
-                # binary encode the data for sending over serial (5 bytes = 1 char + 2 ints)
-                data = struct.pack('c2f', hand_label.encode(), x_loc, y_loc)
+                # binary encode the data for sending over serial with no padding (6 bytes = 1 char + 2 ints + newline)
+                data = struct.pack('=c2H', hand_label.encode(), x_loc, y_loc) + b'\n'
 
                 # avoid sending duplicate data
                 if data != previous_data:
                     serial_port.write(data)
+                    print(data)
                     previous_data = data
 
                 # mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
@@ -126,7 +127,7 @@ async def send_data(result_queue):
 
                 if THRESH > click:
                     # send 1 byte
-                    serial_port.write(b'C')
+                    serial_port.write(b'C\n')
 
                 ## CASE 2 -> exit (exit = close fist)
                 HAND_SIZE = dist(
@@ -148,7 +149,7 @@ async def send_data(result_queue):
                          FRAME_SIZE['width'], FRAME_SIZE['height'])
                 ):
                     # send 1 byte
-                    serial_port.write(b'E')
+                    serial_port.write(b'E\n')
 
 async def main():
     """Main event loop."""
