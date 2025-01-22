@@ -11,6 +11,7 @@ import math
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import struct
+import time
 
 # initialize serial communication
 serial_port = serial.Serial('/dev/ttyGS0', 115200, timeout=1)
@@ -20,7 +21,7 @@ mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(
     static_image_mode=False,
-    max_num_hands=2,
+    max_num_hands=1,
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5,
 )
@@ -41,7 +42,7 @@ FRAME_SIZE = {'width': 480, 'height': 270}
 cap = cv2.VideoCapture(0, cv2.CAP_V4L2)  # Use V4L2 backend explicitly
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
-cap.set(cv2.CAP_PROP_FPS, 30)
+cap.set(cv2.CAP_PROP_FPS, 60)
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)                 # low latency
 # open in fullscreen
 # window_name = "Hand Tracking"
@@ -68,11 +69,17 @@ async def process_frame(frame_queue, result_queue):
         if frame is None:
             break
 
+        start_process = time.time()  # Start timing frame processing
+
         # Convert frame to RGB for Mediapipe
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # get landmarks via mediapipe and append to Asyncio queue
         results = hands.process(rgb_frame)
+
+        end_process = time.time()  # End timing frame processing
+        # print(f"Time to process frame: {end_process - start_process:.6f} seconds")
+
         await result_queue.put(results)
 
 async def send_data(result_queue):
@@ -106,11 +113,6 @@ async def send_data(result_queue):
                 # binary encode the data for sending over serial with no padding (6 bytes = 1 char + 2 ints + newline)
                 data = struct.pack('=c2H', hand_label.encode(), x_loc, y_loc) + b'\n'
                 serial_port.write(data)
-
-                # # avoid sending duplicate data
-                # if data != previous_data:
-                #     serial_port.write(data)
-                #     previous_data = data
 
                 ## CASE 1 -> click detected (click = touch tips of thumb and index finger)
                 # set distance threshold to register click
@@ -148,6 +150,7 @@ async def send_data(result_queue):
                 ):
                     # send 1 byte
                     serial_port.write(b'E\n')
+
 
 async def main():
     """Main event loop."""
