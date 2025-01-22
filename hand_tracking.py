@@ -44,9 +44,9 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
 cap.set(cv2.CAP_PROP_FPS, 30)
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)                 # low latency
 # open in fullscreen
-# window_name = "Hand Tracking"
-# cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-# cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+window_name = "Hand Tracking"
+cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
+cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 previous_data = None
 executor = ThreadPoolExecutor()
@@ -109,10 +109,8 @@ async def send_data(result_queue):
                 # avoid sending duplicate data
                 if data != previous_data:
                     serial_port.write(data)
-                    print(data)
+                    # print(data)
                     previous_data = data
-
-                # mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
                 ## CASE 1 -> click detected (click = touch tips of thumb and index finger)
                 # set distance threshold to register click

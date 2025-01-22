@@ -13,8 +13,8 @@ import struct
 mouse = Controller()
 monitors = get_monitors()
 primary_monitor = monitors[0]
-SCREEN_WIDTH = primary_monitor.width / 1000         # divide by 1000 to convert data received over serial
-SCREEN_HEIGHT = primary_monitor.height / 1000
+SCREEN_WIDTH = primary_monitor.width
+SCREEN_HEIGHT = primary_monitor.height
 
 # Smoothing buffers for moving average
 buffer_size = 3
@@ -145,8 +145,7 @@ async def process_data(data_queue, cur_x, cur_y):
                 hand_label, x_loc, y_loc = struct.unpack('=c2H', data)
 
                 # Flip y-axis
-                # x_loc, y_loc = int(x_loc), 1000 - int(y_loc)
-                # print(f"{hand_label.decode()}: x={int(x_loc)}, y={int(y_loc)}")
+                x_loc, y_loc = int(x_loc), 1000 - int(y_loc)
 
                 # Convert to screen coordinates
                 tar_x, tar_y = map_to_screen(x_loc, y_loc)
