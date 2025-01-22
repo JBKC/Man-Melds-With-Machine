@@ -44,9 +44,9 @@ cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
 cap.set(cv2.CAP_PROP_FPS, 30)
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)                 # low latency
 # open in fullscreen
-window_name = "Hand Tracking"
-cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+# window_name = "Hand Tracking"
+# cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
+# cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 previous_data = None
 executor = ThreadPoolExecutor()
