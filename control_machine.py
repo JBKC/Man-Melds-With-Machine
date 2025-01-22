@@ -24,6 +24,9 @@ last_click = 0
 cooldown = 0.5          # seconds
 
 ########
+class StopException(Exception):
+    """Custom exception to signal a graceful shutdown."""
+    pass
 
 def map_to_screen(x, y):
     """
@@ -43,7 +46,7 @@ def map_to_screen(x, y):
     screen_y = zoom(y, screen_height)
     return screen_x, screen_y
 
-def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=250, DAMP=50, SENSITIVITY=10, MIN_STEP=1):
+def velocity_scale(cur_x, cur_y, tar_x, tar_y, GAIN=1000, DAMP=50, SENSITIVITY=5, MIN_STEP=1):
     """
     Adjust speed of cursor based on distance between current and target position by calculating a scaling factor
     :param cur_x, cur_y: current coords of cursor
@@ -101,18 +104,27 @@ def interpolate(start_x, start_y, end_x, end_y, steps=20, delay=0.005):
         # Small delay to ensure smooth visual movement
         time.sleep(delay)
 
-async def read_serial(serial_port, data_queue):
+async def read_serial(serial_reader, data_queue):
     """Read data asynchronously from the serial port."""
+    buffer = b''  # To handle partial reads
+
     while True:
         try:
-            data = await serial_port.read_until(b'\n')
-            data = data.decode().strip()
-            await data_queue.put(data)
+            # Read a chunk of data
+            chunk = await serial_reader.read(32)  # Read up to 32 bytes or adjust as needed
+            buffer += chunk
+
+            # Process complete lines
+            while b'\n' in buffer:
+                line, buffer = buffer.split(b'\n', 1)
+                data = line.decode().strip()
+                await data_queue.put(data)
+
         except Exception as e:
             print(f"Error reading serial data: {e}")
             break
 
-async def process_data(data_queue, cursor_position):
+async def process_data(data_queue, cur_x, cur_y):
     """Process serial data and perform cursor actions"""
     global last_click
 
@@ -142,25 +154,31 @@ async def process_data(data_queue, cursor_position):
                 print("Double click blocked")
 
         elif data == "stop":
-            sys.exit()
+            raise StopException()
 
 async def main():
     """Main event loop."""
 
     print("Listening for data from Raspberry Pi...")
 
-    cursor_position = [0, 0]  # Current cursor position
+    # set initial cur_x, cur_y
+    cur_x, cur_y = 0, 0
     data_queue = asyncio.Queue() # for appending received data ready to be processed + translated into cursor action
 
     # get asynchronous access to serial port
     serial_port = await serial_asyncio.open_serial_connection(
-        url='/dev/tty.usbmodem14101', baudrate=9600
+        url='/dev/tty.usbmodem14101', baudrate=115200
     )
 
-    # create and run tasks for reading and processing data
-    async with asyncio.TaskGroup() as tg:
-        tg.create_task(read_serial(serial_port[0], data_queue))
-        tg.create_task(process_data(data_queue, cursor_position))
+    try:
+        # create and run tasks for reading and processing data
+        async with asyncio.TaskGroup() as tg:
+            tg.create_task(read_serial(serial_port[0], data_queue))
+            tg.create_task(process_data(data_queue, cur_x, cur_y))
+
+    except StopException:
+        # if "stop" received, shut down program gracefully
+        print("PROGRAM ENDED")
 
 
 if __name__ == "__main__":

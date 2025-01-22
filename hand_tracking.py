@@ -10,9 +10,10 @@ import serial
 import math
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+import struct
 
 # initialize serial communication
-serial_port = serial.Serial('/dev/ttyGS0', 9600, timeout=1)
+serial_port = serial.Serial('/dev/ttyGS0', 115200, timeout=1)
 
 # initialise mediapipe
 mp_hands = mp.solutions.hands
@@ -68,53 +69,62 @@ async def send_data(result_queue):
 
     global previous_data        # simple check to stop duplication of data for efficiency
 
+    w, h = 480, 270  # fixed frame size
+    # control commands
+    MOVE_ID = 9  # experiment with reference point of movement
+    THUMB_TIP = 4
+    INDEX_TIP = 8
+    THUMB_J = 3  # joint of thumb as reference for clicks
+    # closed fist commands
+    MIDDLE_TIP = 12
+    RING_TIP = 16
+    LITTLE_TIP = 20
+    WRIST = 0
+
+    ## move all these to a dictionary???^^^
+
     while True:
         results = await result_queue.get()          # retrieve landmarks from Asyncio queue
         if results is None:
             break
 
         if results.multi_hand_landmarks:
-
-            w, h = 480, 270 # fixed frame size
-
-            # control commands
-            MOVE_ID = 9  # experiment with reference point of movement
-            THUMB_TIP = 4
-            INDEX_TIP = 8
-            THUMB_J = 3  # joint of thumb as reference for clicks
-
-            # closed fist commands
-            MIDDLE_TIP = 12
-            RING_TIP = 16
-            LITTLE_TIP = 20
-            WRIST = 0
-
             for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
-                hand_label = hand_info.classification[0].label  # left vs right hand
 
+                ## CASE 0 -> sending realtime hand movement coordinates
+                # get and mirror hand labels (due to mirrored screen)
+                hand_label = 'R' if hand_info.classification[0].label == "Left" else 'L'
+
+                # reference point for hand movement
                 loc = hand_landmarks.landmark[MOVE_ID]
+                # normalise coords and flip axes
+                x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
 
-                # normalise coordinates between (0,0) and (1,1)
-                # flip both axes
-                x_loc = 1.0 - loc.x
-                y_loc = 1.0 - loc.y
+                # scale floats to integers for efficient sending over serial
+                x_loc *= int(x_loc * 1000)
+                y_loc = int(y_loc * 1000)
 
-                # handle mirroring
-                if hand_label == "Left":
-                    hand_label = "R"
-                else:
-                    hand_label = "L"
+                print(f"{hand_label}: x={x_loc}, y={y_loc}")
 
-                # print(f"{hand_label}: x={x_loc:.2f}, y={y_loc:.2f}")
+                # binary encode the data for sending over serial (1 char + 2 ints)
+                data = struct.pack('c2f', hand_label.encode(), x_loc, y_loc)
 
-                # click = touch tips of thumb and index finger
-                THRESH = dist(hand_landmarks.landmark[THUMB_TIP], hand_landmarks.landmark[THUMB_J], w,
-                              h)  # distance threshold to register click
+                # avoid sending duplicate data
+                if data != previous_data:
+                    serial_port.write(data)
+                    previous_data = data
+
+                # mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
+                ## CASE 1 -> click detected (click = touch tips of thumb and index finger)
+                # set distance threshold to register click
+                THRESH = dist(hand_landmarks.landmark[THUMB_TIP], hand_landmarks.landmark[THUMB_J], w, h)
                 click = dist(hand_landmarks.landmark[THUMB_TIP], hand_landmarks.landmark[INDEX_TIP], w, h)
-                if THRESH > click:
-                    serial_port.write(b"click\n")
 
-                # exit code = close fist
+                if THRESH > click:
+                    serial_port.write(b'C')
+
+                ## CASE 2 -> exit (exit = close fist)
                 HAND_SIZE = dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[MOVE_ID], w, h)
                 if (
                         HAND_SIZE >
@@ -126,13 +136,7 @@ async def send_data(result_queue):
                         HAND_SIZE >
                         dist(hand_landmarks.landmark[WRIST], hand_landmarks.landmark[LITTLE_TIP], w, h)
                 ):
-                    serial_port.write(b"stop\n")
-
-                data = f"{hand_label},{x_loc:.3f},{y_loc:.3f}\n"
-                if data != previous_data:
-                    serial_port.write(data.encode())
-
-                # mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+                    serial_port.write(b'E')
 
 async def main():
     """Main event loop."""
