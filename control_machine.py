@@ -88,7 +88,6 @@ def velocity_scale(cur, tar, GAIN=500000, DAMP=20, SENSITIVITY=10, MIN_STEP=1):
     # must return values to loop
     return new
 
-
 def lerp(start, end, factor):
     """Linear interpolation between start (current) and end (target) points"""
     return start + (end - start) * factor
@@ -120,17 +119,21 @@ async def read_serial(serial_reader, data_queue):
         start_read = time.time()
 
         try:
-            # read 6 byte chunk of data
-            chunk = await serial_reader.read(6)
+            # read 1 byte of data and immediately append to buffer
+            chunk = await serial_reader.read(1)
+            if not chunk:
+                continue  # Skip if no data is received
+
             buffer += chunk
-            end_read = time.time()
-            # print(f"Time to get and read serial data: {end_read - start_read:.6f} seconds")
 
             # Process complete packets (ending with newline)
             while b'\n' in buffer:
                 line, buffer = buffer.split(b'\n', 1)  # Split at the first newline
                 if len(line) > 0:
                     await data_queue.put(line)  # Queue the complete packet
+
+                    end_read = time.time()
+                    print(f"Time to process 1 packet: {end_read - start_read:.6f} seconds")
 
         except Exception as e:
             print(f"Error reading serial data: {e}")
@@ -142,7 +145,6 @@ async def process_data(data_queue, cur):
     global last_click
 
     while True:
-        start_processing = time.time()  # Start timing data processing
 
         # Get the next packet from the queue
         data = await data_queue.get()
@@ -150,9 +152,10 @@ async def process_data(data_queue, cur):
         # Read movement packets
         if len(data) == 5:  # Movement packet: 1 char + 2 unsigned integers
             try:
+                start_processing = time.time()  # Start timing data processing
+
                 # Unpack binary data (1 char + 2 unsigned integers)
                 hand_label, x_loc, y_loc = struct.unpack('=c2H', data)
-                unpack_end = time.time()  # End timing unpack
 
                 # Flip y-axis
                 loc = [int(x_loc), 1000 - int(y_loc)]
@@ -165,7 +168,6 @@ async def process_data(data_queue, cur):
                 cur = velocity_scale(cur, tar)
                 velocity_end = time.time()  # End timing velocity scaling
                 # print(f"Time for velocity scaling and cursor movement: {velocity_end - velocity_start:.6f} seconds")
-
 
                 ## no velocity scaling option
                 # cur = map_to_screen(loc)

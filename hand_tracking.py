@@ -105,12 +105,12 @@ async def send_data(result_queue):
 
                 # binary encode the data for sending over serial with no padding (6 bytes = 1 char + 2 ints + newline)
                 data = struct.pack('=c2H', hand_label.encode(), x_loc, y_loc) + b'\n'
+                serial_port.write(data)
 
-                # avoid sending duplicate data
-                if data != previous_data:
-                    serial_port.write(data)
-                    # print(data)
-                    previous_data = data
+                # # avoid sending duplicate data
+                # if data != previous_data:
+                #     serial_port.write(data)
+                #     previous_data = data
 
                 ## CASE 1 -> click detected (click = touch tips of thumb and index finger)
                 # set distance threshold to register click
