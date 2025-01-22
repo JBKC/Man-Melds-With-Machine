@@ -141,15 +141,19 @@ async def main():
     frame_queue = asyncio.Queue()
     result_queue = asyncio.Queue()
 
-    processing_task = asyncio.create_task(process_frame(frame_queue, result_queue))
-    serial_task = asyncio.create_task(send_data(result_queue))
+    # create and immediately run tasks
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(process_frame(frame_queue, result_queue))
+        tg.create_task(send_data(result_queue))
 
     while cap.isOpened():
+        # reading frames is blocking - send to run on separate thread
         ret, frame = await asyncio.get_event_loop().run_in_executor(executor, cap.read)
         if not ret:
             print("Failed to grab frame")
             break
 
+        # attach frame to queue for processing
         await frame_queue.put(frame)
 
         # Display the frame
@@ -159,11 +163,7 @@ async def main():
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    # Cleanup
-    await frame_queue.put(None)
-    await result_queue.put(None)
-    await processing_task
-    await serial_task
+    # stop processes
     cap.release()
     cv2.destroyAllWindows()
 
