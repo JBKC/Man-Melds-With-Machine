@@ -42,7 +42,7 @@ FRAME_SIZE = {'width': 480, 'height': 270}
 cap = cv2.VideoCapture(0, cv2.CAP_V4L2)  # Use V4L2 backend explicitly
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
-cap.set(cv2.CAP_PROP_FPS, 60)
+cap.set(cv2.CAP_PROP_FPS, 30)
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)                 # low latency
 # open in fullscreen
 # window_name = "Hand Tracking"
@@ -64,12 +64,29 @@ def dist(lm1, lm2, w, h):
 async def process_frame(frame_queue, result_queue):
     """Process each frame to track hand"""
 
+    # Track real FPS
+    frame_count = 0
+    start_time = time.time()
+
     while True:
         frame = await frame_queue.get()
         if frame is None:
             break
 
-        start_process = time.time()  # Start timing frame processing
+        # Increment frame count
+        frame_count += 1
+
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+
+        # Calculate FPS every second
+        if elapsed_time > 1.0:
+            fps = frame_count / elapsed_time
+            print(f"FPS: {fps:.2f}")
+            frame_count = 0  # Reset frame count
+            start_time = time.time()  # Reset start time
+
+        # start_process = time.time()  # Start timing frame processing
 
         # Convert frame to RGB for Mediapipe
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -77,7 +94,7 @@ async def process_frame(frame_queue, result_queue):
         # get landmarks via mediapipe and append to Asyncio queue
         results = hands.process(rgb_frame)
 
-        end_process = time.time()  # End timing frame processing
+        # end_process = time.time()  # End timing frame processing
         # print(f"Time to process frame: {end_process - start_process:.6f} seconds")
 
         await result_queue.put(results)

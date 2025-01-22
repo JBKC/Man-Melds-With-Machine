@@ -48,7 +48,7 @@ def map_to_screen(loc):
     screen_y = int(zoom(loc[1], SCREEN_HEIGHT))
     return [screen_x, screen_y]
 
-def velocity_scale(cur, tar, GAIN=5000, DAMP=20, SENSITIVITY=10, MIN_STEP=1):
+def velocity_scale(cur, tar, GAIN=5000, DAMP=50, SENSITIVITY=10, MIN_STEP=1):
     """
     Adjust speed of cursor based on distance between current and target position by calculating a scaling factor
     :param cur: current [x,y] coords of cursor
@@ -167,13 +167,13 @@ async def process_data(data_queue, cur):
                 velocity_start = time.time()  # Start timing velocity scaling
                 cur = velocity_scale(cur, tar)
                 velocity_end = time.time()  # End timing velocity scaling
-                # print(f"Time for velocity scaling and cursor movement: {velocity_end - velocity_start:.6f} seconds")
+                print(f"Time for velocity scaling and cursor movement: {velocity_end - velocity_start:.6f} seconds")
 
                 ## no velocity scaling option
                 # cur = map_to_screen(loc)
                 # mouse.position = (cur[0], cur[1])
 
-                print(f"{hand_label.decode()}: x={int(cur[0])}, y={int(cur[1])}")
+                # print(f"{hand_label.decode()}: x={int(cur[0])}, y={int(cur[1])}")
 
 
             except Exception as e:
