@@ -2,13 +2,13 @@ import serial
 from pynput.mouse import Controller, Button
 from screeninfo import get_monitors
 from collections import deque
+import serial_asyncio
+import asyncio
 import time
 import sys
 
 # Initialize
-serial_port = serial.Serial('/dev/tty.usbmodem14101', 9600, timeout=1)
 mouse = Controller()
-
 monitors = get_monitors()
 primary_monitor = monitors[0]
 screen_width = primary_monitor.width
@@ -18,6 +18,10 @@ screen_height = primary_monitor.height
 buffer_size = 3
 x_buffer = deque(maxlen=buffer_size)
 y_buffer = deque(maxlen=buffer_size)
+
+# initialise mouse clicks
+last_click = 0
+cooldown = 0.5          # seconds
 
 ########
 
@@ -97,20 +101,23 @@ def interpolate(start_x, start_y, end_x, end_y, steps=20, delay=0.005):
         # Small delay to ensure smooth visual movement
         time.sleep(delay)
 
+async def read_serial(serial_port, data_queue):
+    """Read data asynchronously from the serial port."""
+    while True:
+        try:
+            data = await serial_port.read_until(b'\n')
+            data = data.decode().strip()
+            await data_queue.put(data)
+        except Exception as e:
+            print(f"Error reading serial data: {e}")
+            break
 
-# initialise current cursor position
-cur_x, cur_y = 0, 0
+async def process_data(data_queue, cursor_position):
+    """Process serial data and perform cursor actions"""
+    global last_click
 
-# initialise mouse clicks
-last_click = 0
-cooldown = 0.5          # seconds
-
-print("Listening for data from Raspberry Pi...")
-
-while True:
-    try:
-        # Read data from the serial port
-        data = serial_port.readline().decode().strip()
+    while True:
+        data = await data_queue.get()
 
         if "," in data:
             # read input x,y coords
@@ -137,8 +144,25 @@ while True:
         elif data == "stop":
             sys.exit()
 
+async def main():
+    """Main event loop."""
 
-    except Exception as e:
-        print(f"Error: {e}")
-        break
+    print("Listening for data from Raspberry Pi...")
 
+    cursor_position = [0, 0]  # Current cursor position
+    data_queue = asyncio.Queue() # for appending received data ready to be processed + translated into cursor action
+
+    # get asynchronous access to serial port
+    serial_port = await serial_asyncio.open_serial_connection(
+        url='/dev/tty.usbmodem14101', baudrate=9600
+    )
+
+    # Create tasks for reading and processing data
+    reader_task = asyncio.create_task(read_serial(serial_port[0], data_queue))
+    processor_task = asyncio.create_task(process_data(data_queue, cursor_position))
+
+    # Run tasks
+    await asyncio.gather(reader_task, processor_task)
+
+if __name__ == "__main__":
+    asyncio.run(main())

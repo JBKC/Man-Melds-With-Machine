@@ -134,34 +134,37 @@ async def send_data(result_queue):
 
                 # mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-
 async def main():
     """Main event loop."""
 
     frame_queue = asyncio.Queue()
     result_queue = asyncio.Queue()
 
+    if not cap.isOpened():
+        print("Error: Unable to open camera.")
+        return
+
     # create and immediately run tasks
     async with asyncio.TaskGroup() as tg:
         tg.create_task(process_frame(frame_queue, result_queue))
         tg.create_task(send_data(result_queue))
 
-    while cap.isOpened():
-        # reading frames is blocking - send to run on separate thread
-        ret, frame = await asyncio.get_event_loop().run_in_executor(executor, cap.read)
-        if not ret:
-            print("Failed to grab frame")
-            break
+        while cap.isOpened():
+            # reading frames is blocking - send to run on separate thread
+            ret, frame = await asyncio.get_event_loop().run_in_executor(executor, cap.read)
+            if not ret:
+                print("Failed to grab frame")
+                break
 
-        # attach frame to queue for processing
-        await frame_queue.put(frame)
+            # attach frame to queue for processing
+            await frame_queue.put(frame)
 
-        # Display the frame
-        # mirror = cv2.flip(frame, 1)
-        # cv2.imshow("Hand Tracking", mirror)
+            # Display the frame
+            # mirror = cv2.flip(frame, 1)
+            # cv2.imshow("Hand Tracking", mirror)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
 
     # stop processes
     cap.release()
