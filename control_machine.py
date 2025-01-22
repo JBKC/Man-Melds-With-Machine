@@ -6,6 +6,8 @@ import serial_asyncio
 import asyncio
 import time
 import sys
+import struct
+
 
 # Initialize
 mouse = Controller()
@@ -106,20 +108,21 @@ def interpolate(start_x, start_y, end_x, end_y, steps=20, delay=0.005):
 
 async def read_serial(serial_reader, data_queue):
     """Read data asynchronously from the serial port."""
-    buffer = b''  # To handle partial reads
-
     while True:
         try:
-            # Read a chunk of data
-            chunk = await serial_reader.read(32)  # Read up to 32 bytes or adjust as needed
-            buffer += chunk
+            # read first byte to determine the packet type
+            packet_type = await serial_reader.read(1)
+            if not packet_type:
+                continue  # Skip empty reads
 
-            # Process complete lines
-            while b'\n' in buffer:
-                line, buffer = buffer.split(b'\n', 1)
-                data = line.decode().strip()
-                await data_queue.put(data)
+            if packet_type in (b'C', b'E'):  # command packet
+                await data_queue.put(packet_type)  # Send the command directly
 
+            else:  # movement packet
+                # read the remaining 4 bytes (2 unsigned shorts for x, y)
+                payload = await serial_reader.read(4)
+                if len(payload) == 4:
+                    data_queue.put(packet_type + payload)  # combine and queue the full packet
         except Exception as e:
             print(f"Error reading serial data: {e}")
             break

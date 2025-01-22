@@ -103,7 +103,7 @@ async def send_data(result_queue):
 
                 print(f"{hand_label}: x={x_loc}, y={y_loc}")
 
-                # binary encode the data for sending over serial (1 char + 2 ints)
+                # binary encode the data for sending over serial (5 bytes = 1 char + 2 ints)
                 data = struct.pack('c2f', hand_label.encode(), x_loc, y_loc)
 
                 # avoid sending duplicate data
@@ -123,7 +123,9 @@ async def send_data(result_queue):
                     hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
                     hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
                     FRAME_SIZE['width'], FRAME_SIZE['height'])
+
                 if THRESH > click:
+                    # send 1 byte
                     serial_port.write(b'C')
 
                 ## CASE 2 -> exit (exit = close fist)
@@ -145,6 +147,7 @@ async def send_data(result_queue):
                     dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']], hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                          FRAME_SIZE['width'], FRAME_SIZE['height'])
                 ):
+                    # send 1 byte
                     serial_port.write(b'E')
 
 async def main():
