@@ -93,7 +93,7 @@ def lerp(start, end, factor):
     """Linear interpolation between start (current) and end (target) points"""
     return start + (end - start) * factor
 
-def interpolate(start, end, steps=20, delay=0.005):
+def interpolate(start, end, steps=20, delay=0.0001):
     """
     Interpolates between current and target positions to fill the visual gaps of the cursor
     More steps = smoother mouse cursor but more perceived lag
@@ -117,10 +117,14 @@ async def read_serial(serial_reader, data_queue):
     buffer = b''  # store packets as they come in
 
     while True:
+        start_read = time.time()
+
         try:
             # read 6 byte chunk of data
             chunk = await serial_reader.read(6)
             buffer += chunk
+            end_read = time.time()
+            # print(f"Time to get and read serial data: {end_read - start_read:.6f} seconds")
 
             # Process complete packets (ending with newline)
             while b'\n' in buffer:
@@ -138,6 +142,8 @@ async def process_data(data_queue, cur):
     global last_click
 
     while True:
+        start_processing = time.time()  # Start timing data processing
+
         # Get the next packet from the queue
         data = await data_queue.get()
 
@@ -146,20 +152,26 @@ async def process_data(data_queue, cur):
             try:
                 # Unpack binary data (1 char + 2 unsigned integers)
                 hand_label, x_loc, y_loc = struct.unpack('=c2H', data)
+                unpack_end = time.time()  # End timing unpack
 
                 # Flip y-axis
                 loc = [int(x_loc), 1000 - int(y_loc)]
 
                 # Convert to screen coordinates
                 tar = map_to_screen(loc)
-                # Velocity scaling and move cursor
-                cur = velocity_scale(cur, tar)
 
-                ### no velocity scaling option
+                # Velocity scaling and move cursor
+                velocity_start = time.time()  # Start timing velocity scaling
+                cur = velocity_scale(cur, tar)
+                velocity_end = time.time()  # End timing velocity scaling
+                # print(f"Time for velocity scaling and cursor movement: {velocity_end - velocity_start:.6f} seconds")
+
+
+                ## no velocity scaling option
                 # cur = map_to_screen(loc)
                 # mouse.position = (cur[0], cur[1])
 
-                print(f"{hand_label.decode()}: x={int(cur[0])}, y={int(cur[1])}")
+                # print(f"{hand_label.decode()}: x={int(cur[0])}, y={int(cur[1])}")
 
 
             except Exception as e:
@@ -178,6 +190,10 @@ async def process_data(data_queue, cur):
                     print("Double click blocked")
             elif command == b'E':  # Exit command
                 raise StopException()
+
+        end_processing = time.time()  # End timing data processing
+        # print(f"Time to process data packet: {end_processing - start_processing:.6f} seconds")
+
 
 
 async def main():
