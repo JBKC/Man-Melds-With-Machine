@@ -157,12 +157,11 @@ async def main():
         url='/dev/tty.usbmodem14101', baudrate=9600
     )
 
-    # Create tasks for reading and processing data
-    reader_task = asyncio.create_task(read_serial(serial_port[0], data_queue))
-    processor_task = asyncio.create_task(process_data(data_queue, cursor_position))
+    # create and run tasks for reading and processing data
+    async with asyncio.TaskGroup() as tg:
+        tg.create_task(read_serial(serial_port[0], data_queue))
+        tg.create_task(process_data(data_queue, cursor_position))
 
-    # Run tasks
-    await asyncio.gather(reader_task, processor_task)
 
 if __name__ == "__main__":
     asyncio.run(main())
