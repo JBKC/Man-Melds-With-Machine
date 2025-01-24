@@ -74,7 +74,7 @@ def velocity_scale(cur, tar, GAIN=5000, DAMP=50, SENSITIVITY=10, MIN_STEP=1):
     else:
         scaling_factor = MIN_STEP + (distance / GAIN) * damping
 
-    print(int(distance), int(scaling_factor))
+    # print(int(distance), int(scaling_factor))
 
     # calculate cursor step sizes
     dx = (tar[0] - cur[0]) / scaling_factor
