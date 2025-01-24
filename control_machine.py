@@ -60,6 +60,7 @@ def velocity_scale(cur, tar, GAIN=5000, DAMP=50, SENSITIVITY=10, MIN_STEP=1):
     """
 
     # calculate Euclidian distance between current and target locations
+
     distance = ((tar[0] - cur[0]) ** 2 + (tar[1] - cur[1]) ** 2) ** 0.5
 
     # apply damping to limit step size when distances are very small (reduce static jitter)
@@ -67,8 +68,15 @@ def velocity_scale(cur, tar, GAIN=5000, DAMP=50, SENSITIVITY=10, MIN_STEP=1):
     damping *= DAMP if damping > 1 else 1
 
     # calculate scaling factor for cursor steps
-    scaling_factor = MIN_STEP + (distance / GAIN) * damping
-    # print(damping, distance, scaling_factor)
+    if distance < SENSITIVITY:
+        # drastically reduce GAIN for small movements
+        scaling_factor = MIN_STEP + (distance * damping)
+    else:
+        scaling_factor = MIN_STEP + (distance / GAIN) * damping
+
+    print(scaling_factor)
+    # print(distance)
+    # print(int(damping), int(distance), int(scaling_factor))
 
     # calculate cursor step sizes
     dx = (tar[0] - cur[0]) / scaling_factor
@@ -164,10 +172,10 @@ async def process_data(data_queue, cur):
                 tar = map_to_screen(loc)
 
                 # Velocity scaling and move cursor
-                velocity_start = time.time()  # Start timing velocity scaling
+                # velocity_start = time.time()  # Start timing velocity scaling
                 cur = velocity_scale(cur, tar)
-                velocity_end = time.time()  # End timing velocity scaling
-                print(f"Time for velocity scaling and cursor movement: {velocity_end - velocity_start:.6f} seconds")
+                # velocity_end = time.time()  # End timing velocity scaling
+                # print(f"Time for velocity scaling and cursor movement: {velocity_end - velocity_start:.6f} seconds")
 
                 ## no velocity scaling option
                 # cur = map_to_screen(loc)
