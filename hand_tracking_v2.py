@@ -1,5 +1,5 @@
 '''
-Basic hand tracking script acting as mouse control - movement + clicks
+Hand tracking script acting with full keyboard + mouse controls
 Originally designed to run on Raspberry Pi + stream output to laptop
 Run from Terminal
 '''
@@ -27,10 +27,10 @@ hands = mp_hands.Hands(
 )
 
 HAND_LANDMARKS = {
-    'MOVE_ID': 9,                   # reference point of movement (base of third finger)
+    'MOVE_ID': 9,  # reference point of movement (base of third finger)
     'THUMB_TIP': 4,
     'INDEX_TIP': 8,
-    'THUMB_J': 3,                   # reference for cliks (joint of thumb)
+    'THUMB_J': 3,  # reference for cliks (joint of thumb)
     'MIDDLE_TIP': 12,
     'RING_TIP': 16,
     'LITTLE_TIP': 20,
@@ -48,7 +48,7 @@ cap = cv2.VideoCapture(0, cv2.CAP_V4L2)  # Use V4L2 backend explicitly
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
 cap.set(cv2.CAP_PROP_FPS, 60)
-cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)                 # low latency
+cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # low latency
 # open in fullscreen
 # window_name = "Hand Tracking"
 # cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
@@ -65,6 +65,7 @@ def dist(lm1, lm2, w, h):
     dx = (lm1.x - lm2.x) * w
     dy = (lm1.y - lm2.y) * h
     return math.sqrt(dx ** 2 + dy ** 2)
+
 
 async def process_frame(frame_queue, result_queue):
     """Process each frame to track hand"""
@@ -104,13 +105,14 @@ async def process_frame(frame_queue, result_queue):
 
         await result_queue.put(results)
 
+
 async def send_data(result_queue):
     """Send data over serial communication."""
 
-    global previous_data        # simple check to stop duplication of data for efficiency
+    global previous_data  # simple check to stop duplication of data for efficiency
 
     while True:
-        results = await result_queue.get()          # retrieve landmarks from Asyncio queue
+        results = await result_queue.get()  # retrieve landmarks from Asyncio queue
         if results is None:
             break
 
@@ -157,24 +159,27 @@ async def send_data(result_queue):
                     hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']],
                     FRAME_SIZE['width'], FRAME_SIZE['height'])
                 if (
-                    HAND_SIZE >
-                    dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']], hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
-                         FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                    HAND_SIZE >
-                    dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']], hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
-                         FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                    HAND_SIZE >
-                    dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']], hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
-                         FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                    HAND_SIZE >
-                    dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']], hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
-                         FRAME_SIZE['width'], FRAME_SIZE['height'])
+                        HAND_SIZE >
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                        HAND_SIZE >
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                        HAND_SIZE >
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                        HAND_SIZE >
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height'])
                 ):
                     # send 1 byte
                     serial_port.write(b'E\n')
 
                 ## CASE 1 -> click detected (click = touch tips of thumb and index finger)
-
 
 
 async def main():
