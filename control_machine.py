@@ -1,5 +1,6 @@
 import serial
-from pynput.mouse import Controller, Button
+from pynput.mouse import Controller as MouseController, Button
+from pynput.keyboard import Controller as KeyboardController, Key
 from screeninfo import get_monitors
 from collections import deque
 import serial_asyncio
@@ -10,7 +11,8 @@ import struct
 
 
 # Initialize
-mouse = Controller()
+mouse = MouseController()
+keyboard = KeyboardController()
 monitors = get_monitors()
 primary_monitor = monitors[0]
 SCREEN_WIDTH = primary_monitor.width
@@ -198,6 +200,36 @@ async def process_data(data_queue, cur):
                     print("Double click blocked")
             elif command == b'E':  # Exit command
                 raise StopException()
+            if command == b'F':  # next tab
+                current_time = time.time()
+                if current_time - last_click > cooldown:
+                    with keyboard.pressed(Key.ctrl):
+                        keyboard.press(Key.tab)
+                        keyboard.release(Key.tab)
+                    print("NEXT TAB")
+                    last_click = current_time
+                else:
+                    print("Double tab forward blocked")
+            if command == b'B':  # previous tab
+                current_time = time.time()
+                if current_time - last_click > cooldown:
+                    with keyboard.pressed(Key.ctrl):
+                        with keyboard.pressed(Key.shift):
+                            keyboard.press(Key.tab)
+                            keyboard.release(Key.tab)
+                    print("PREVIOUS TAB")
+                    last_click = current_time
+                else:
+                    print("Double tab back blocked")
+            if command == b'M':  #
+                current_time = time.time()
+                if current_time - last_click > cooldown:
+                    keyboard.press(Key.media_volume_mute) 
+                    keyboard.release(Key.media_volume_mute)
+                    print("MISSION CONTROL")
+                    last_click = current_time
+                else:
+                    print("Double mission control blocked")
 
         end_processing = time.time()  # End timing data processing
         # print(f"Time to process data packet: {end_processing - start_processing:.6f} seconds")

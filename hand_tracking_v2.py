@@ -179,7 +179,35 @@ async def send_data(result_queue):
                     # send 1 byte
                     serial_port.write(b'E\n')
 
-                ## CASE 1 -> click detected (click = touch tips of thumb and index finger)
+                ## CASE 3 -> change tab forward
+                tabf = dist(
+                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                    hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                    FRAME_SIZE['width'], FRAME_SIZE['height'])
+
+                if THRESH > tabf:
+                    # send 1 byte
+                    serial_port.write(b'F\n')
+
+                ## CASE 4 -> change tab backward
+                tabb = dist(
+                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                    hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                    FRAME_SIZE['width'], FRAME_SIZE['height'])
+
+                if THRESH > tabb:
+                    # send 1 byte
+                    serial_port.write(b'B\n')
+
+                ## CASE 5 -> mission control
+                tabb = dist(
+                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                    hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                    FRAME_SIZE['width'], FRAME_SIZE['height'])
+
+                if THRESH > tabb:
+                    # send 1 byte
+                    serial_port.write(b'M\n')
 
 
 async def main():
