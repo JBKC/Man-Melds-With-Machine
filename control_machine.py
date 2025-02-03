@@ -221,11 +221,13 @@ async def process_data(data_queue, cur):
                     last_click = current_time
                 else:
                     print("Double tab back blocked")
-            if command == b'M':  #
+            if command == b'M':  # mission control
+                ## these keys may differ based on laptop and keyboard setup
                 current_time = time.time()
                 if current_time - last_click > cooldown:
-                    keyboard.press(Key.media_volume_mute) 
-                    keyboard.release(Key.media_volume_mute)
+                    with keyboard.pressed(Key.cmd):
+                        keyboard.press(Key.f3)
+                        keyboard.release(Key.f3)
                     print("MISSION CONTROL")
                     last_click = current_time
                 else:
@@ -247,7 +249,7 @@ async def main():
 
     # get asynchronous access to serial port
     serial_port = await serial_asyncio.open_serial_connection(
-        url='/dev/tty.usbmodem14101', baudrate=115200
+        url='/dev/tty.usbmodem14201', baudrate=115200
     )
 
     try:
