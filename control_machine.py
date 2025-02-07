@@ -2,6 +2,7 @@ import serial
 from pynput.mouse import Controller as MouseController, Button
 from pynput.keyboard import Controller as KeyboardController, Key
 import keyboard
+import pyautogui
 from screeninfo import get_monitors
 from collections import deque
 import serial_asyncio
@@ -223,11 +224,11 @@ async def process_data(data_queue, cur):
                 else:
                     print("Double tab back blocked")
             if command == b'M':  # mission control
-                ## these keys may differ based on laptop and keyboard setup. Keyboard does not support fn key
                 current_time = time.time()
                 if current_time - last_click > cooldown:
-                    keyboard.press_and_release('f3')
-                    # if this does not work - try pyautogui https://pyautogui.readthedocs.io/en/latest/keyboard.html
+                    pyautogui.keyDown("ctrl")
+                    pyautogui.press("up")
+                    pyautogui.keyUp("ctrl")
                     print("MISSION CONTROL")
                     last_click = current_time
                 else:
