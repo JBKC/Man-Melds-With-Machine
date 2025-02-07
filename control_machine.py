@@ -1,6 +1,7 @@
 import serial
 from pynput.mouse import Controller as MouseController, Button
 from pynput.keyboard import Controller as KeyboardController, Key
+import keyboard
 from screeninfo import get_monitors
 from collections import deque
 import serial_asyncio
@@ -12,7 +13,7 @@ import struct
 
 # Initialize
 mouse = MouseController()
-keyboard = KeyboardController()
+pykeyboard = KeyboardController()
 monitors = get_monitors()
 primary_monitor = monitors[0]
 SCREEN_WIDTH = primary_monitor.width
@@ -203,9 +204,9 @@ async def process_data(data_queue, cur):
             if command == b'F':  # next tab
                 current_time = time.time()
                 if current_time - last_click > cooldown:
-                    with keyboard.pressed(Key.ctrl):
-                        keyboard.press(Key.tab)
-                        keyboard.release(Key.tab)
+                    with pykeyboard.pressed(Key.ctrl):
+                        pykeyboard.press(Key.tab)
+                        pykeyboard.release(Key.tab)
                     print("NEXT TAB")
                     last_click = current_time
                 else:
@@ -213,21 +214,20 @@ async def process_data(data_queue, cur):
             if command == b'B':  # previous tab
                 current_time = time.time()
                 if current_time - last_click > cooldown:
-                    with keyboard.pressed(Key.ctrl):
-                        with keyboard.pressed(Key.shift):
-                            keyboard.press(Key.tab)
-                            keyboard.release(Key.tab)
+                    with pykeyboard.pressed(Key.ctrl):
+                        with pykeyboard.pressed(Key.shift):
+                            pykeyboard.press(Key.tab)
+                            pykeyboard.release(Key.tab)
                     print("PREVIOUS TAB")
                     last_click = current_time
                 else:
                     print("Double tab back blocked")
             if command == b'M':  # mission control
-                ## these keys may differ based on laptop and keyboard setup
+                ## these keys may differ based on laptop and keyboard setup. Keyboard does not support fn key
                 current_time = time.time()
                 if current_time - last_click > cooldown:
-                    with keyboard.pressed(Key.cmd):
-                        keyboard.press(Key.f3)
-                        keyboard.release(Key.f3)
+                    keyboard.press_and_release('f3')
+                    # if this does not work - try pyautogui https://pyautogui.readthedocs.io/en/latest/keyboard.html
                     print("MISSION CONTROL")
                     last_click = current_time
                 else:
@@ -249,7 +249,7 @@ async def main():
 
     # get asynchronous access to serial port
     serial_port = await serial_asyncio.open_serial_connection(
-        url='/dev/tty.usbmodem14201', baudrate=115200
+        url='/dev/tty.usbmodem14101', baudrate=115200
     )
 
     try:

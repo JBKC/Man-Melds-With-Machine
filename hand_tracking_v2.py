@@ -182,7 +182,7 @@ async def send_data(result_queue):
                 ## CASE 3 -> change tab forward
                 tabf = dist(
                     hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
-                    hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                    hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
                     FRAME_SIZE['width'], FRAME_SIZE['height'])
 
                 if THRESH > tabf:
@@ -192,7 +192,7 @@ async def send_data(result_queue):
                 ## CASE 4 -> change tab backward
                 tabb = dist(
                     hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
-                    hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                    hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
                     FRAME_SIZE['width'], FRAME_SIZE['height'])
 
                 if THRESH > tabb:
