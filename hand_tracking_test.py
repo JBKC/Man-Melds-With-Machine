@@ -30,9 +30,11 @@ FRAME_SIZE = {'width': 480, 'height': 270}
 
 # Initialize camera
 cap = cv2.VideoCapture(0, cv2.CAP_V4L2)  # Use V4L2 backend explicitly
+
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
-cap.set(cv2.CAP_PROP_FPS, 30)
+cap.set(cv2.CAP_PROP_FPS, 60)
+cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # low latency
 
 # Open in fullscreen
 window_name = "Hand Tracking"
