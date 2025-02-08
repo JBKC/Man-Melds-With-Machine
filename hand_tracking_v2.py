@@ -119,51 +119,24 @@ async def send_data(result_queue):
         if results.multi_hand_landmarks:
             for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
 
-                ## CASE 0 -> sending realtime hand movement coordinates
+                ## determine whether in cursor movement or scrolling mode
+
                 # get and mirror hand labels (due to mirrored screen)
                 hand_label = 'R' if hand_info.classification[0].label == "Left" else 'L'
 
-                # reference point for hand movement
-                loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
-                # normalise coords and flip axes
-                x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
-
-                # scale floats to integers for efficient sending over serial
-                x_loc = int(x_loc * 1000)
-                y_loc = int(y_loc * 1000)
-
-                # print(f"{hand_label}: x={x_loc}, y={y_loc}")
-
-                # binary encode the data for sending over serial with no padding (6 bytes = 1 char + 2 ints + newline)
-                data = struct.pack('=c2H', hand_label.encode(), x_loc, y_loc) + b'\n'
-                serial_port.write(data)
-
-                ## CASE 1 -> click detected (click = touch tips of thumb and index finger)
-                # set distance threshold to register click
-                THRESH = dist(
-                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
-                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']],
-                    FRAME_SIZE['width'], FRAME_SIZE['height'])
-                click = dist(
-                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
-                    hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
-                    FRAME_SIZE['width'], FRAME_SIZE['height'])
-
-                if THRESH > click:
-                    # send 1 byte
-                    serial_port.write(b'C\n')
-
-                ## CASE 2 -> exit (exit = close fist)
+                # calculate hand size (used for some commands)
                 HAND_SIZE = dist(
                     hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                     hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']],
                     FRAME_SIZE['width'], FRAME_SIZE['height'])
+
+                # CASE 1: scrolling mode = index and middle finger extended, ring and little closed
                 if (
-                        HAND_SIZE >
+                        HAND_SIZE/2 <
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        HAND_SIZE >
+                        HAND_SIZE/2 <
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
@@ -176,38 +149,106 @@ async def send_data(result_queue):
                              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height'])
                 ):
-                    # send 1 byte
-                    serial_port.write(b'E\n')
+                    # reference for scroll movement = tip of index finger
+                    loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']]
+                    # normalise coord and flip axis
+                    y_loc = 1.0 - loc.y
+                    # scale float to integer for efficient sending over serial
+                    y_loc = int(y_loc * 1000)
 
-                ## CASE 3 -> change tab forward
-                tabf = dist(
-                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
-                    hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
-                    FRAME_SIZE['width'], FRAME_SIZE['height'])
+                    # binary encode the data for sending over serial with no padding
+                    # 4 bytes = 1 char (S for scrolling) + 1 int (y coordinate) + newline
+                    data = struct.pack('=cH', b'S', y_loc) + b'\n'
+                    # send data over serial
+                    serial_port.write(data)
+                    # print(data)
 
-                if THRESH > tabf:
-                    # send 1 byte
-                    serial_port.write(b'F\n')
+                # CASE 2: cursor mode = open palm
+                else:
+                    ## CASE 2.0 -> no commands: send realtime hand position
 
-                ## CASE 4 -> change tab backward
-                tabb = dist(
-                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
-                    hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
-                    FRAME_SIZE['width'], FRAME_SIZE['height'])
+                    # reference point for hand movement
+                    loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
+                    # normalise coords and flip axes
+                    x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
+                    # scale floats to integers for efficient sending over serial
+                    x_loc = int(x_loc * 1000)
+                    y_loc = int(y_loc * 1000)
 
-                if THRESH > tabb:
-                    # send 1 byte
-                    serial_port.write(b'B\n')
+                    # print(f"{hand_label}: x={x_loc}, y={y_loc}")
 
-                ## CASE 5 -> mission control
-                tabb = dist(
-                    hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
-                    hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
-                    FRAME_SIZE['width'], FRAME_SIZE['height'])
+                    # binary encode the data for sending over serial with no padding (6 bytes = 1 char + 2 ints + newline)
+                    data = struct.pack('=c2H', hand_label.encode(), x_loc, y_loc) + b'\n'
+                    serial_port.write(data)
+                    # print(data)
 
-                if THRESH > tabb:
-                    # send 1 byte
-                    serial_port.write(b'M\n')
+                    ## CASE 2.1 -> click detected (click = touch tips of thumb and index finger)
+                    # set distance threshold to register click
+                    THRESH = dist(
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']],
+                        FRAME_SIZE['width'], FRAME_SIZE['height'])
+                    click = dist(
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                        hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                        FRAME_SIZE['width'], FRAME_SIZE['height'])
+
+                    if THRESH > click:
+                        # send 1 byte
+                        serial_port.write(b'C\n')
+
+                    ## CASE 2.2 -> exit (= close fist)
+                    if (
+                            HAND_SIZE >
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE >
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE/2 >
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE/2 >
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height'])
+                    ):
+                        # send 1 byte
+                        serial_port.write(b'E\n')
+
+                    ## CASE 2.3 -> change tab forward
+                    tabf = dist(
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                        hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                        FRAME_SIZE['width'], FRAME_SIZE['height'])
+
+                    if THRESH > tabf:
+                        # send 1 byte
+                        serial_port.write(b'F\n')
+
+                    ## CASE 2.4 -> change tab backward
+                    tabb = dist(
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                        hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                        FRAME_SIZE['width'], FRAME_SIZE['height'])
+
+                    if THRESH > tabb:
+                        # send 1 byte
+                        serial_port.write(b'B\n')
+
+                    ## CASE 2.5 -> mission control
+                    tabb = dist(
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                        hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                        FRAME_SIZE['width'], FRAME_SIZE['height'])
+
+                    if THRESH > tabb:
+                        # send 1 byte
+                        serial_port.write(b'M\n')
+
 
 
 async def main():
