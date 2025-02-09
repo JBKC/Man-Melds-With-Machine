@@ -121,7 +121,10 @@ def interpolate(start, end, steps=20, delay=0.0001):
 async def read_serial(serial_reader, data_queue):
     """
     Read data asynchronously from the serial port
-    Protocol = 2 bytes for command (1 char + newline), 6 bytes for movement (1 char + 2 int + newline)
+    Protocol =
+    2 bytes for command (1 char + newline)
+    4 bytes for scroll (1 char + 1 int + newline)
+    6 bytes for cursor movement (1 char + 2 int + newline)
     """
     buffer = b''  # store packets as they come in
 
