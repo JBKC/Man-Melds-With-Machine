@@ -197,8 +197,33 @@ async def process_data(data_queue, cur):
             except Exception as e:
                 print(f"Error processing movement data: {e}")
 
-        # Read movement packets
-        if len(data) == 5:  # Movement packet: 1 char + 2 unsigned integers
+        # Read scrolling packets
+        elif len(data) == 3:  # Scroll packet: 1 char + 1 unsigned integer
+            try:
+                start_processing = time.time()  # Start timing data processing
+
+                # Unpack binary data
+                _, y_loc = struct.unpack('=cH', data)
+                # Flip y-axis
+                y_loc = 1000 - int(y_loc)
+                # Convert to screen coordinates
+                tar = map_to_screen(y_loc)
+
+                mouse.scroll(0, 10)
+
+
+
+                # # Velocity scaling and move cursor
+                # # velocity_start = time.time()  # Start timing velocity scaling
+                # cur = velocity_scale(cur, tar)
+                # # velocity_end = time.time()  # End timing velocity scaling
+                # # print(f"Time for velocity scaling and cursor movement: {velocity_end - velocity_start:.6f} seconds")
+                #
+                # ## no velocity scaling option
+                # # cur = map_to_screen(loc)
+                # # mouse.position = (cur[0], cur[1])
+                #
+                # # print(f"{hand_label.decode()}: x={int(cur[0])}, y={int(cur[1])}")
 
         # Read command packets
         elif len(data) == 1:  # Command packet: 1 byte
