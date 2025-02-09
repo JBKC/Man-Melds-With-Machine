@@ -1,3 +1,8 @@
+'''
+Translates data from serial into mouse and keyboard actions
+3 categories: cursor movement, scroll, commands
+'''
+
 import serial
 from pynput.mouse import Controller as MouseController, Button
 from pynput.keyboard import Controller as KeyboardController, Key
@@ -191,6 +196,9 @@ async def process_data(data_queue, cur):
 
             except Exception as e:
                 print(f"Error processing movement data: {e}")
+
+        # Read movement packets
+        if len(data) == 5:  # Movement packet: 1 char + 2 unsigned integers
 
         # Read command packets
         elif len(data) == 1:  # Command packet: 1 byte
