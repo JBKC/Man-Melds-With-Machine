@@ -193,7 +193,6 @@ async def process_data(data_queue, cur):
 
                 # print(f"{hand_label.decode()}: x={int(cur[0])}, y={int(cur[1])}")
 
-
             except Exception as e:
                 print(f"Error processing movement data: {e}")
 
@@ -207,11 +206,10 @@ async def process_data(data_queue, cur):
                 # Flip y-axis
                 y_loc = 1000 - int(y_loc)
                 # Convert to screen coordinates
-                tar = map_to_screen(y_loc)
+                ## more elegant solution than the 0 as the x coord?
+                tar = map_to_screen([0, y_loc])
 
                 mouse.scroll(0, 10)
-
-
 
                 # # Velocity scaling and move cursor
                 # # velocity_start = time.time()  # Start timing velocity scaling
@@ -224,6 +222,9 @@ async def process_data(data_queue, cur):
                 # # mouse.position = (cur[0], cur[1])
                 #
                 # # print(f"{hand_label.decode()}: x={int(cur[0])}, y={int(cur[1])}")
+
+            except Exception as e:
+                print(f"Error processing scrolling data: {e}")
 
         # Read command packets
         elif len(data) == 1:  # Command packet: 1 byte
