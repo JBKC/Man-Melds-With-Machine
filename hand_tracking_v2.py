@@ -150,15 +150,20 @@ async def send_data(result_queue):
                              FRAME_SIZE['width'], FRAME_SIZE['height'])
                 ):
                     # reference for scroll movement = tip of index finger
-                    loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']]
+                    scroll_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']]
+                    # reference for scroll anchor = MOVE_ID (base of middle finger)
+                    anchor_loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
+
                     # normalise coord and flip axis
-                    y_loc = 1.0 - loc.y
+                    scroll_loc = 1.0 - scroll_loc.y
+                    anchor_loc = 1.0 - anchor_loc.y
                     # scale float to integer for efficient sending over serial
-                    y_loc = int(y_loc * 1000)
+                    scroll_loc = int(scroll_loc * 1000)
+                    anchor_loc = int(anchor_loc * 1000)
 
                     # binary encode the data for sending over serial with no padding
-                    # 4 bytes = 1 char (S for scrolling) + 1 int (y coordinate) + newline
-                    data = struct.pack('=cH', b'S', y_loc) + b'\n'
+                    # 6 bytes = 1 char (S for scrolling) + 2 int (scroll and move y-locations) + newline
+                    data = struct.pack('=c2H', b'S', scroll_loc, anchor_loc) + b'\n'
                     # send data over serial
                     serial_port.write(data)
                     # print(data)

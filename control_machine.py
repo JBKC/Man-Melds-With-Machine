@@ -30,9 +30,11 @@ buffer_size = 3
 x_buffer = deque(maxlen=buffer_size)
 y_buffer = deque(maxlen=buffer_size)
 
-# initialise mouse clicks
+# initialise mouse clicks / position
 last_click = 0
 cooldown = 0.5          # seconds
+scroll_anchor = None
+
 
 ########
 class StopException(Exception):
@@ -128,7 +130,7 @@ async def read_serial(serial_reader, data_queue):
     Read data asynchronously from the serial port
     Protocol =
     2 bytes for command (1 char + newline)
-    4 bytes for scroll (1 char + 1 int + newline)
+    6 bytes for scroll (1 char + 2 int + newline)
     6 bytes for cursor movement (1 char + 2 int + newline)
     """
     buffer = b''  # store packets as they come in
@@ -160,7 +162,7 @@ async def read_serial(serial_reader, data_queue):
 async def process_data(data_queue, cur):
     """Process serial data and perform cursor actions"""
 
-    global last_click
+    global last_click, scroll_anchor
 
     while True:
 
@@ -168,63 +170,55 @@ async def process_data(data_queue, cur):
         data = await data_queue.get()
 
         # Read movement packets
-        if len(data) == 5:  # Movement packet: 1 char + 2 unsigned integers
+        if len(data) == 5:  # Movement and scroll packets: 1 char + 2 unsigned integers
+
             try:
                 start_processing = time.time()  # Start timing data processing
 
-                # Unpack binary data (1 char + 2 unsigned integers)
-                hand_label, x_loc, y_loc = struct.unpack('=c2H', data)
+                # scrolling mode detected
+                if data.startswith(b'S'):
 
-                # Flip y-axis
-                loc = [int(x_loc), 1000 - int(y_loc)]
+                    # Unpack binary data
+                    _, scroll_loc, anchor_loc = struct.unpack('=c2H', data)
+                    # Flip y-axis
+                    scroll_loc = 1000 - int(scroll_loc)
+                    anchor_loc = 1000 - int(anchor_loc)
 
-                # Convert to screen coordinates
-                tar = map_to_screen(loc)
+                    # set scroll anchor (relative to hand position)
+                    if scroll_anchor is None:
+                        scroll_anchor = anchor_loc
 
-                # Velocity scaling and move cursor
-                # velocity_start = time.time()  # Start timing velocity scaling
-                cur = velocity_scale(cur, tar)
-                # velocity_end = time.time()  # End timing velocity scaling
-                # print(f"Time for velocity scaling and cursor movement: {velocity_end - velocity_start:.6f} seconds")
+                    scroll_y = int(scroll_anchor - scroll_loc) / 10
 
-                ## no velocity scaling option
-                # cur = map_to_screen(loc)
-                # mouse.position = (cur[0], cur[1])
+                    mouse.scroll(dx=0, dy=scroll_y)
 
-                # print(f"{hand_label.decode()}: x={int(cur[0])}, y={int(cur[1])}")
+                # cursor movement mode (default)
+                else:
+                    scroll_anchor = None
+
+                    # Unpack binary data (1 char + 2 unsigned integers)
+                    hand_label, x_loc, y_loc = struct.unpack('=c2H', data)
+
+                    # Flip y-axis
+                    loc = [int(x_loc), 1000 - int(y_loc)]
+
+                    # Convert to screen coordinates
+                    tar = map_to_screen(loc)
+
+                    # Velocity scaling and move cursor
+                    # velocity_start = time.time()  # Start timing velocity scaling
+                    cur = velocity_scale(cur, tar)
+                    # velocity_end = time.time()  # End timing velocity scaling
+                    # print(f"Time for velocity scaling and cursor movement: {velocity_end - velocity_start:.6f} seconds")
+
+                    ## no velocity scaling option
+                    # cur = map_to_screen(loc)
+                    # mouse.position = (cur[0], cur[1])
+
+                    # print(f"{hand_label.decode()}: x={int(cur[0])}, y={int(cur[1])}")
 
             except Exception as e:
                 print(f"Error processing movement data: {e}")
-
-        # Read scrolling packets
-        elif len(data) == 3:  # Scroll packet: 1 char + 1 unsigned integer
-            try:
-                start_processing = time.time()  # Start timing data processing
-
-                # Unpack binary data
-                _, y_loc = struct.unpack('=cH', data)
-                # Flip y-axis
-                y_loc = 1000 - int(y_loc)
-                # Convert to screen coordinates
-                ## more elegant solution than the 0 as the x coord?
-                tar = map_to_screen([0, y_loc])
-
-                mouse.scroll(0, 10)
-
-                # # Velocity scaling and move cursor
-                # # velocity_start = time.time()  # Start timing velocity scaling
-                # cur = velocity_scale(cur, tar)
-                # # velocity_end = time.time()  # End timing velocity scaling
-                # # print(f"Time for velocity scaling and cursor movement: {velocity_end - velocity_start:.6f} seconds")
-                #
-                # ## no velocity scaling option
-                # # cur = map_to_screen(loc)
-                # # mouse.position = (cur[0], cur[1])
-                #
-                # # print(f"{hand_label.decode()}: x={int(cur[0])}, y={int(cur[1])}")
-
-            except Exception as e:
-                print(f"Error processing scrolling data: {e}")
 
         # Read command packets
         elif len(data) == 1:  # Command packet: 1 byte
