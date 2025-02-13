@@ -1,6 +1,7 @@
 '''
 Translates data from serial into mouse and keyboard actions
 3 categories: cursor movement, scroll, commands
+Call script directly only when processing camera feed on a separate machine (e.g. Raspberry Pi)
 '''
 
 import serial

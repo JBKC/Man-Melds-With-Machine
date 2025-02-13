@@ -1,12 +1,10 @@
 '''
 Hand tracking script acting with full keyboard + mouse controls
-Originally designed to run on Raspberry Pi + stream output to laptop
-Run from Terminal
+Call script directly only when processing camera feed on a separate machine (e.g. Raspberry Pi)
 '''
 
 import cv2
 import mediapipe as mp
-import serial
 import math
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -14,8 +12,15 @@ import struct
 import time
 from config import HAND_LANDMARKS, FRAME_SIZE, SERIAL
 
-# initialize serial communication
-serial_port = SERIAL['camera_port']
+# define RUN_MODE
+RUN_MODE = "serial" if __name__ == "__main__" else "async"
+
+# initialize serial communication conditionally
+if RUN_MODE == "serial":
+    import serial
+    serial_port = SERIAL['camera_port']
+else:
+    serial_port = None
 
 # initialise mediapipe
 mp_hands = mp.solutions.hands
@@ -90,7 +95,10 @@ async def process_frame(frame_queue, result_queue):
 
 
 async def send_data(result_queue):
-    """Send data over serial communication"""
+    """
+    RUN_MODE = serial: sends data packets over serial to be read by control_machine.py
+    RUN_MODE = async: appends data packets to queues to be read by control_machine.py
+    """
 
     while True:
         results = await result_queue.get()  # retrieve landmarks from Asyncio queue
