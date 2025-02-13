@@ -1,0 +1,10 @@
+mediapipe==0.10.20
+opencv-python==4.10.0.84
+numpy==1.26.4
+matplotlib==3.10.0
+pynput==1.7.6
+evdev; platform_system == "Linux"
+keyboard
+pyautogui
+screeninfo
+asyncio
