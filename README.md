@@ -52,7 +52,7 @@ on the Pi, and
 ```
 control_machine.py
 ```
-on the Mac. then raise hand to start moving the cursor around
+on the Mac. Then raise hand to start moving the cursor around
 
 
 
