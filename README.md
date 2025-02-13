@@ -13,4 +13,29 @@ See demo here: https://x.com/jbelevate/status/1888661396189290976
 5. Tab forwards = tap tip of thumb and tip of ring finger
 6. Mission control = tap tip of thumb and tip of little finger
 
-## How to run it
+## Install it
+### 1. Clone this repository:
+   ```
+   git clone https://github.com/JBKC/Man-Melds-With-Machine.git
+   ```
+
+### 2. Create and activate virtual environment:
+   ```
+   python -m venv venv
+   source venv/bin/activate
+   ```
+
+### 3. Install the required packages:
+   ```
+   pip install -r requirements.txt
+   ```
+
+## Run it
+Program revolves around 2 scripts - 'hand_tracking.py' and 'control_machine.py'
+### 1. If operating from a single machine
+run
+```
+PPG_models.py
+```
+### 2. If run
+
