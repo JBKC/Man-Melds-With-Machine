@@ -12,10 +12,10 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import struct
 import time
-from config import HAND_LANDMARKS, FRAME_SIZE
+from config import HAND_LANDMARKS, FRAME_SIZE, SERIAL
 
 # initialize serial communication
-serial_port = serial.Serial('/dev/ttyGS0', 115200, timeout=1)
+serial_port = SERIAL['camera_port']
 
 # initialise mediapipe
 mp_hands = mp.solutions.hands
@@ -90,7 +90,7 @@ async def process_frame(frame_queue, result_queue):
 
 
 async def send_data(result_queue):
-    """Send data over serial communication."""
+    """Send data over serial communication"""
 
     while True:
         results = await result_queue.get()  # retrieve landmarks from Asyncio queue
@@ -100,7 +100,7 @@ async def send_data(result_queue):
         if results.multi_hand_landmarks:
             for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
 
-                ## determine whether in cursor movement or scrolling mode
+                ### determine whether in cursor movement or scrolling mode
 
                 # get and mirror hand labels (due to mirrored screen)
                 hand_label = 'R' if hand_info.classification[0].label == "Left" else 'L'
@@ -238,7 +238,7 @@ async def send_data(result_queue):
 
 
 async def main():
-    """Main event loop."""
+    """Main event loop"""
 
     frame_queue = asyncio.Queue()
     result_queue = asyncio.Queue()
@@ -253,7 +253,7 @@ async def main():
         tg.create_task(send_data(result_queue))
 
         while cap.isOpened():
-            # reading frames is blocking - send to run on separate thread
+            # send to run on separate thread (reading frames is blocking process)
             ret, frame = await asyncio.get_event_loop().run_in_executor(executor, cap.read)
             if not ret:
                 print("Failed to grab frame")
@@ -262,7 +262,7 @@ async def main():
             # attach frame to queue for processing
             await frame_queue.put(frame)
 
-            # Display the frame
+            ### optional: isplay the frame
             # mirror = cv2.flip(frame, 1)
             # cv2.imshow("Hand Tracking", mirror)
 

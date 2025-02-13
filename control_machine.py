@@ -15,6 +15,7 @@ import asyncio
 import time
 import sys
 import struct
+from config import SERIAL, PARAMS
 
 
 # Initialize
@@ -59,7 +60,7 @@ def map_to_screen(loc):
     screen_y = int(zoom(loc[1], SCREEN_HEIGHT))
     return [screen_x, screen_y]
 
-def velocity_scale(cur, tar, GAIN=5000, DAMP=50, SENSITIVITY=10, MIN_STEP=1):
+def velocity_scale(cur, tar, GAIN=PARAMS['GAIN'], DAMP=PARAMS['DAMP'], SENSITIVITY=PARAMS['SENSITIVITY'], MIN_STEP=1):
     """
     Adjust speed of cursor based on distance between current and target position by calculating a scaling factor
     :param cur: current [x,y] coords of cursor
@@ -70,8 +71,7 @@ def velocity_scale(cur, tar, GAIN=5000, DAMP=50, SENSITIVITY=10, MIN_STEP=1):
     :param MIN_STEP: Stops division by zero
     """
 
-    # calculate Euclidian distance between current and target locations
-
+    # calculate Euclidian distance between current and target locations of the hand
     distance = ((tar[0] - cur[0]) ** 2 + (tar[1] - cur[1]) ** 2) ** 0.5
 
     # apply damping to limit step size when distances are very small (reduce static jitter)
@@ -97,19 +97,18 @@ def velocity_scale(cur, tar, GAIN=5000, DAMP=50, SENSITIVITY=10, MIN_STEP=1):
     # interpolate movement for large distances only
     if distance > SENSITIVITY:
         interpolate(cur, new)
-        # mouse.position = (new[0], new[1])
 
     else:
         mouse.position = (new[0], new[1])
 
-    # must return values to loop
+    # return values to loop
     return new
 
 def lerp(start, end, factor):
     """Linear interpolation between start (current) and end (target) points"""
     return start + (end - start) * factor
 
-def interpolate(start, end, steps=20, delay=0.0001):
+def interpolate(start, end, steps=PARAMS['STEPS'], delay=PARAMS['DELAY']):
     """
     Interpolates between current and target positions to fill the visual gaps of the cursor
     More steps = smoother mouse cursor but more perceived lag
@@ -273,16 +272,14 @@ async def process_data(data_queue, cur):
 async def main():
     """Main event loop."""
 
-    print("Listening for data from Raspberry Pi...")
+    print("Listening for data from serial...")
 
     # set initial cur_x, cur_y
     cur = [0,0]
     data_queue = asyncio.Queue() # for appending received data ready to be processed + translated into cursor action
 
     # get asynchronous access to serial port
-    serial_port = await serial_asyncio.open_serial_connection(
-        url='/dev/tty.usbmodem14101', baudrate=115200
-    )
+    serial_port = await SERIAL['serial_port']
 
     try:
         # create and run tasks for reading and processing data
