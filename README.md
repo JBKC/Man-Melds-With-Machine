@@ -32,7 +32,7 @@ See demo here: https://x.com/jbelevate/status/1888661396189290976
    ```
 
 ## Run it
-Program revolves around 2 scripts - `hand_tracking.v2.py` and `control_machine.py`.
+Program revolves around 2 scripts - `hand_tracking_v2.py` and `control_machine.py`.
 First script reads camera frames and sends data to second script, which translates data into mouse / keyboard actions.
 Use `config.py` to change paramaters including how the UX feels
 
@@ -46,7 +46,7 @@ This will automatically call both scripts simultaneously - just raise your hand 
 ### 2. If operating off 2 machines (e.g. Mac and Raspberry Pi)
 Run 
 ```
-hand_tracking.v2.py
+hand_tracking_v2.py
 ```
 on the Pi, and
 ```
