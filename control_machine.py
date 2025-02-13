@@ -161,6 +161,7 @@ async def read_serial(serial_reader, data_queue):
             print(f"Error reading serial data: {e}")
             break
 
+
 async def process_data(data_queue, cur):
     """Process serial data and perform cursor actions"""
 
@@ -271,7 +272,6 @@ async def process_data(data_queue, cur):
         # print(f"Time to process data packet: {end_processing - start_processing:.6f} seconds")
 
 
-
 async def main(data_queue=None):
     """Main event loop"""
 
@@ -279,20 +279,29 @@ async def main(data_queue=None):
 
     # set initial cur_x, cur_y
     cur = [0,0]
-    data_queue = asyncio.Queue() # for appending received data ready to be processed + translated into cursor action
 
-    # get asynchronous access to serial port
-    serial_port = await SERIAL['serial_port']
+    if RUN_MODE == "async" and data_queue is not None:
+        try:
+            await process_data(data_queue, cur)
 
-    try:
-        # create and run tasks for reading and processing data
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(read_serial(serial_port[0], data_queue))
-            tg.create_task(process_data(data_queue, cur))
+        except StopException:
+            # if "stop" received, shut down program gracefully
+            print("PROGRAM ENDED")
 
-    except StopException:
-        # if "stop" received, shut down program gracefully
-        print("PROGRAM ENDED")
+    elif RUN_MODE == "serial":
+        import serial
+        serial_port = SERIAL['serial_port']
+        try:
+            # create and run tasks for reading and processing data
+            async with asyncio.TaskGroup() as tg:
+                tg.create_task(read_serial(serial_port[0], data_queue))
+                tg.create_task(process_data(data_queue, cur))
+
+        except StopException:
+            # if "stop" received, shut down program gracefully
+            print("PROGRAM ENDED")
+    else:
+        print("Invalid RUN_MODE or missing data_queue")
 
 
 if __name__ == "__main__":
