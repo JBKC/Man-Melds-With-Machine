@@ -8,14 +8,6 @@ PARAMS = {
     'DELAY': 0.0001             # higher delay = longer time between calculating each step of the cursor position. avoid high steps and high delay
 }
 
-# initialise serial connections (only used when running the 2 scripts from separate machines)
-SERIAL = {
-    'camera_port': serial.Serial('/dev/ttyGS0', 115200, timeout=1),
-    'serial_port': serial_asyncio.open_serial_connection(
-        url='/dev/tty.usbmodem14101', baudrate=115200
-    )
-}
-
 # mediapipe landmarks
 HAND_LANDMARKS = {
     'MOVE_ID': 9,  # reference point of movement (base of third finger)
@@ -30,3 +22,11 @@ HAND_LANDMARKS = {
 
 # define virtual frame size in pixels (480x270 is a good tradeoff between resolution and processing speed)
 FRAME_SIZE = {'width': 480, 'height': 270}
+
+# initialise serial connections (only used when running the 2 scripts from separate machines)
+SERIAL = {
+    'camera_port': serial.Serial('/dev/ttyGS0', 115200, timeout=1),
+    'serial_port': serial_asyncio.open_serial_connection(
+        url='/dev/tty.usbmodem14101', baudrate=115200
+    )
+}
