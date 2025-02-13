@@ -12,6 +12,7 @@ See demo here: https://x.com/jbelevate/status/1888661396189290976
 4. Tab backwards = tap tip of thumb and tip of middle finger
 5. Tab forwards = tap tip of thumb and tip of ring finger
 6. Mission control = tap tip of thumb and tip of little finger
+7. Exit program = make a fist with all fingers
 
 ## Install it
 ### 1. Clone this repository:
@@ -31,11 +32,27 @@ See demo here: https://x.com/jbelevate/status/1888661396189290976
    ```
 
 ## Run it
-Program revolves around 2 scripts - 'hand_tracking.py' and 'control_machine.py'
+Program revolves around 2 scripts - `hand_tracking.v2.py` and `control_machine.py`
+First script reads camera frames and sends data to second script, which translates data into mouse / keyboard actions
+Use `config.py`
+
 ### 1. If operating from a single machine
-run
+Run
 ```
-PPG_models.py
+main_script.py
 ```
-### 2. If run
+This will automatically call both scripts simultaneously - just raise your hand to begin controlling the screen
+
+### 2. If operating off 2 machines (e.g. Mac and Raspberry Pi)
+Run 
+```
+hand_tracking.v2.py
+```
+on the Pi, and
+```
+control_machine.py
+```
+on the Mac. then raise hand to start moving the cursor around
+
+
 
