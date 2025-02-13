@@ -21,8 +21,6 @@ if RUN_MODE == "serial":
     serial_port = SERIAL['camera_port']
 else:
     serial_port = None
-    # initialize asyncio queue for "async" mode
-    data_queue = asyncio.Queue()
 
 # initialise mediapipe
 mp_hands = mp.solutions.hands
@@ -58,7 +56,7 @@ def dist(lm1, lm2, w, h):
     return math.sqrt(dx ** 2 + dy ** 2)
 
 
-async def process_frame(frame_queue, result_queue):
+async def process_frame(frame_queue, landmark_queue):
     """Process each camera frame to track hand movements"""
 
     # calculate real FPS
@@ -94,17 +92,17 @@ async def process_frame(frame_queue, result_queue):
         # end_process = time.time()  # End timing frame processing
         # print(f"Time to process frame: {end_process - start_process:.6f} seconds")
 
-        await result_queue.put(results)
+        await landmark_queue.put(results)
 
 
-async def send_data(result_queue):
+async def send_data(landmark_queue, data_queue):
     """
     RUN_MODE = serial: sends data packets over serial to be read by control_machine.py
     RUN_MODE = async: appends data packets to queues to be read by control_machine.py
     """
 
     while True:
-        results = await result_queue.get()  # retrieve landmarks from Asyncio queue
+        results = await landmark_queue.get()  # retrieve landmarks from Asyncio queue
         if results is None:
             break
 
@@ -271,8 +269,10 @@ async def send_data(result_queue):
 async def main():
     """Main event loop"""
 
-    frame_queue = asyncio.Queue()
-    result_queue = asyncio.Queue()
+    frame_queue = asyncio.Queue()               # stores camera frames
+    landmark_queue = asyncio.Queue()            # stores landmarks within the frames
+    # shared asyncio queue for "async" mode
+    data_queue = asyncio.Queue()                # stores bytes of data to be sent to control_machine.py
 
     if not cap.isOpened():
         print("Error: Unable to open camera.")
@@ -280,8 +280,8 @@ async def main():
 
     # create and immediately run tasks
     async with asyncio.TaskGroup() as tg:
-        tg.create_task(process_frame(frame_queue, result_queue))
-        tg.create_task(send_data(result_queue))
+        tg.create_task(process_frame(frame_queue, landmark_queue))
+        tg.create_task(send_data(landmark_queue, data_queue))
 
         while cap.isOpened():
             # send to run on separate thread (reading frames is blocking process)

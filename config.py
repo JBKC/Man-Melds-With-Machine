@@ -8,7 +8,7 @@ PARAMS = {
     'DELAY': 0.0001             # higher delay = longer time between calculating each step of the cursor position. avoid high steps and high delay
 }
 
-# initialise serial connections
+# initialise serial connections (only used when running the 2 scripts from separate machines)
 SERIAL = {
     'camera_port': serial.Serial('/dev/ttyGS0', 115200, timeout=1),
     'serial_port': serial_asyncio.open_serial_connection(

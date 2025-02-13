@@ -273,7 +273,7 @@ async def process_data(data_queue, cur):
 async def main():
     """Main event loop."""
 
-    print("Listening for data from serial...")
+    print("Listening for data from Hand Tracking script...")
 
     # set initial cur_x, cur_y
     cur = [0,0]
