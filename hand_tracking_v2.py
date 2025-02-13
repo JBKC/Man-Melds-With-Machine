@@ -21,6 +21,8 @@ if RUN_MODE == "serial":
     serial_port = SERIAL['camera_port']
 else:
     serial_port = None
+    # initialize asyncio queue for "async" mode
+    data_queue = asyncio.Queue()
 
 # initialise mediapipe
 mp_hands = mp.solutions.hands
@@ -46,6 +48,7 @@ cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # low latency
 # cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 executor = ThreadPoolExecutor()
+
 
 def dist(lm1, lm2, w, h):
     """Calculate Euclidian distance between 2 landmarks"""
@@ -153,9 +156,13 @@ async def send_data(result_queue):
                     # binary encode the data for sending over serial with no padding
                     # 6 bytes = 1 char (S for scrolling) + 2 int (scroll and move y-locations) + newline
                     data = struct.pack('=c2H', b'S', scroll_loc, anchor_loc) + b'\n'
-                    # send data over serial
-                    serial_port.write(data)
-                    # print(data)
+
+                    # transmit data depending on mode
+                    if RUN_MODE == "serial":
+                        serial_port.write(data)
+                    else:
+                        await data_queue.put(data)
+
 
                 # CASE 2: cursor mode = open palm
                 else:
@@ -173,8 +180,10 @@ async def send_data(result_queue):
 
                     # binary encode the data for sending over serial with no padding (6 bytes = 1 char + 2 ints + newline)
                     data = struct.pack('=c2H', hand_label.encode(), x_loc, y_loc) + b'\n'
-                    serial_port.write(data)
-                    # print(data)
+                    if RUN_MODE == "serial":
+                        serial_port.write(data)
+                    else:
+                        await data_queue.put(data)
 
                     ## CASE 2.1 -> click detected (click = touch tips of thumb and index finger)
                     # set distance threshold to register click
@@ -189,7 +198,10 @@ async def send_data(result_queue):
 
                     if THRESH > click:
                         # send 1 byte
-                        serial_port.write(b'C\n')
+                        if RUN_MODE == "serial":
+                            serial_port.write(b'C\n')
+                        else:
+                            await data_queue.put(b'C\n')
 
                     ## CASE 2.2 -> exit (= close fist)
                     if (
@@ -211,7 +223,10 @@ async def send_data(result_queue):
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
                         # send 1 byte
-                        serial_port.write(b'E\n')
+                        if RUN_MODE == "serial":
+                            serial_port.write(b'E\n')
+                        else:
+                            await data_queue.put(b'E\n')
 
                     ## CASE 2.3 -> change tab forward
                     tabf = dist(
@@ -221,7 +236,10 @@ async def send_data(result_queue):
 
                     if THRESH > tabf:
                         # send 1 byte
-                        serial_port.write(b'F\n')
+                        if RUN_MODE == "serial":
+                            serial_port.write(b'F\n')
+                        else:
+                            await data_queue.put(b'F\n')
 
                     ## CASE 2.4 -> change tab backward
                     tabb = dist(
@@ -231,7 +249,10 @@ async def send_data(result_queue):
 
                     if THRESH > tabb:
                         # send 1 byte
-                        serial_port.write(b'B\n')
+                        if RUN_MODE == "serial":
+                            serial_port.write(b'B\n')
+                        else:
+                            await data_queue.put(b'B\n')
 
                     ## CASE 2.5 -> mission control
                     tabb = dist(
@@ -241,8 +262,10 @@ async def send_data(result_queue):
 
                     if THRESH > tabb:
                         # send 1 byte
-                        serial_port.write(b'M\n')
-
+                        if RUN_MODE == "serial":
+                            serial_port.write(b'M\n')
+                        else:
+                            await data_queue.put(b'M\n')
 
 
 async def main():
@@ -270,7 +293,7 @@ async def main():
             # attach frame to queue for processing
             await frame_queue.put(frame)
 
-            ### optional: isplay the frame
+            ### optional: display the frame
             # mirror = cv2.flip(frame, 1)
             # cv2.imshow("Hand Tracking", mirror)
 
