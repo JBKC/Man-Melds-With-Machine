@@ -1,13 +1,8 @@
 # Man-Melds-With-Machine
-
-Use computer vision to translate your hand 
-Human Machine Interface using combination of biosignals and gestures to control computers
-
-## How it works
-Control
+Control your Mac using hand gestures, recorded by camera and interpreted by computer vision 
 
 ## Commands and what they do
-1. 
+1. Open Palm = 
 
 # Always-On-Health-Monitor
 Wrist wearable health monitor that takes sensor inputs and gives various real-time readings on health, fatigue state etc.
