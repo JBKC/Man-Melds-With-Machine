@@ -32,9 +32,9 @@ See demo here: https://x.com/jbelevate/status/1888661396189290976
    ```
 
 ## Run it
-Program revolves around 2 scripts - `hand_tracking.v2.py` and `control_machine.py`
-First script reads camera frames and sends data to second script, which translates data into mouse / keyboard actions
-Use `config.py`
+Program revolves around 2 scripts - `hand_tracking.v2.py` and `control_machine.py`.
+First script reads camera frames and sends data to second script, which translates data into mouse / keyboard actions.
+Use `config.py` to change paramaters including how the UX feels
 
 ### 1. If operating from a single machine
 Run
