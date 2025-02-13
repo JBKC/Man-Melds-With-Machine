@@ -18,6 +18,8 @@ import sys
 import struct
 from config import SERIAL, PARAMS
 
+# define RUN_MODE
+RUN_MODE = "serial" if __name__ == "__main__" else "async"
 
 # Initialize
 mouse = MouseController()
@@ -270,8 +272,8 @@ async def process_data(data_queue, cur):
 
 
 
-async def main():
-    """Main event loop."""
+async def main(data_queue=None):
+    """Main event loop"""
 
     print("Listening for data from Hand Tracking script...")
 

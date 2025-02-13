@@ -14,6 +14,7 @@ from config import HAND_LANDMARKS, FRAME_SIZE, SERIAL
 
 # define RUN_MODE
 RUN_MODE = "serial" if __name__ == "__main__" else "async"
+print(f"Running in {RUN_MODE} mode")
 
 # initialize serial communication conditionally
 if RUN_MODE == "serial":
@@ -266,13 +267,11 @@ async def send_data(landmark_queue, data_queue):
                             await data_queue.put(b'M\n')
 
 
-async def main():
+async def main(data_queue):
     """Main event loop"""
 
     frame_queue = asyncio.Queue()               # stores camera frames
     landmark_queue = asyncio.Queue()            # stores landmarks within the frames
-    # shared asyncio queue for "async" mode
-    data_queue = asyncio.Queue()                # stores bytes of data to be sent to control_machine.py
 
     if not cap.isOpened():
         print("Error: Unable to open camera.")
