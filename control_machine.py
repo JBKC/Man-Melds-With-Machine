@@ -4,19 +4,17 @@ Translates data from serial into mouse and keyboard actions
 Call script directly only when processing camera feed on a separate machine (e.g. Raspberry Pi)
 '''
 
-import serial
 from pynput.mouse import Controller as MouseController, Button
 from pynput.keyboard import Controller as KeyboardController, Key
 import keyboard
 import pyautogui
 from screeninfo import get_monitors
 from collections import deque
-import serial_asyncio
 import asyncio
 import time
 import sys
 import struct
-from config import SERIAL, PARAMS
+from config import PARAMS
 
 # define RUN_MODE
 RUN_MODE = "serial" if __name__ == "__main__" else "async"
@@ -280,6 +278,7 @@ async def main(data_queue=None):
     # set initial cur_x, cur_y
     cur = [0,0]
 
+    # get data_queue from hand_tracking script if in async mode
     if RUN_MODE == "async" and data_queue is not None:
         try:
             await process_data(data_queue, cur)
@@ -288,13 +287,18 @@ async def main(data_queue=None):
             # if "stop" received, shut down program gracefully
             print("PROGRAM ENDED")
 
+    # initialize data_queue if in serial mode
     elif RUN_MODE == "serial":
-        import serial
-        serial_port = SERIAL['serial_port']
+        import serial_asyncio
+        serial_port = await serial_asyncio.open_serial_connection(url='/dev/tty.usbmodem14101', baudrate=115200)
+        reader, writer = serial_port
+
+        data_queue = asyncio.Queue()
+
         try:
             # create and run tasks for reading and processing data
             async with asyncio.TaskGroup() as tg:
-                tg.create_task(read_serial(serial_port[0], data_queue))
+                tg.create_task(read_serial(reader, data_queue))
                 tg.create_task(process_data(data_queue, cur))
 
         except StopException:

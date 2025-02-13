@@ -10,18 +10,11 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import struct
 import time
-from config import HAND_LANDMARKS, FRAME_SIZE, SERIAL
+from config import HAND_LANDMARKS, FRAME_SIZE
 
 # define RUN_MODE
 RUN_MODE = "serial" if __name__ == "__main__" else "async"
 print(f"Running in {RUN_MODE} mode")
-
-# initialize serial communication conditionally
-if RUN_MODE == "serial":
-    import serial
-    serial_port = SERIAL['camera_port']
-else:
-    serial_port = None
 
 # initialise mediapipe
 mp_hands = mp.solutions.hands
@@ -96,7 +89,7 @@ async def process_frame(frame_queue, landmark_queue):
         await landmark_queue.put(results)
 
 
-async def send_data(landmark_queue, data_queue):
+async def send_data(landmark_queue, data_queue, serial_port):
     """
     RUN_MODE = serial: sends data packets over serial to be read by control_machine.py
     RUN_MODE = async: appends data packets to queues to be read by control_machine.py
@@ -267,8 +260,15 @@ async def send_data(landmark_queue, data_queue):
                             await data_queue.put(b'M\n')
 
 
-async def main(data_queue):
+async def main(data_queue=None):
     """Main event loop"""
+
+    # initialize serial communication conditionally
+    if RUN_MODE == "serial":
+        import serial
+        serial_port = serial.Serial('/dev/ttyGS0', 115200, timeout=1)
+    else:
+        serial_port = None
 
     frame_queue = asyncio.Queue()               # stores camera frames
     landmark_queue = asyncio.Queue()            # stores landmarks within the frames
@@ -280,7 +280,7 @@ async def main(data_queue):
     # create and immediately run tasks
     async with asyncio.TaskGroup() as tg:
         tg.create_task(process_frame(frame_queue, landmark_queue))
-        tg.create_task(send_data(landmark_queue, data_queue))
+        tg.create_task(send_data(landmark_queue, data_queue, serial_port))
 
         while cap.isOpened():
             # send to run on separate thread (reading frames is blocking process)
