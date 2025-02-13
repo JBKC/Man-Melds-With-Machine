@@ -1,20 +1,12 @@
 # Man-Melds-With-Machine
 Control your Mac using hand gestures, recorded by camera and interpreted by computer vision 
 
-## Commands and what they do
-1. Open Palm = 
+## Commands and what they do
+1. Move cursor = open palm (reference point for movement is base of third finger)
+2. Scroll = keep index and middle finger raised; curl ring and little finger into fist (reference point for scroll is tip of index finger)
+3. Left mouse click = tap tip of thumb and tip of index finger
+4. Tab backwards = tap tip of thumb and tip of middle finger
+5. Tab forwards = tap tip of thumb and tip of ring finger
+6. Mission control = tap tip of thumb and tip of little finger
 
-# Always-On-Health-Monitor
-Wrist wearable health monitor that takes sensor inputs and gives various real-time readings on health, fatigue state etc.
-
-## STEP 1
-Get good supervised HR estimate by training on the PPG-Dalia dataset, by recreating KID-PPG architecture (2024) - https://arxiv.org/abs/2405.09559
-
-## STEP 2
-Add in activity detection as in PPG Dalia (walking, cycling, etc)
-
-## STEP 3
-Use trained model to run realtime inference using Adafruit PPG and accelerometer sensors
-
-## STEP 4
-Model optimisation to run locally on a smartwatch devices, using Raspberry Pi or similar
+## How to run it
