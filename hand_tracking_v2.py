@@ -12,6 +12,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 import struct
 import time
+from config import HAND_LANDMARKS, FRAME_SIZE
 
 # initialize serial communication
 serial_port = serial.Serial('/dev/ttyGS0', 115200, timeout=1)
@@ -26,51 +27,33 @@ hands = mp_hands.Hands(
     min_tracking_confidence=0.5,
 )
 
-HAND_LANDMARKS = {
-    'MOVE_ID': 9,  # reference point of movement (base of third finger)
-    'THUMB_TIP': 4,
-    'INDEX_TIP': 8,
-    'THUMB_J': 3,  # reference for cliks (joint of thumb)
-    'MIDDLE_TIP': 12,
-    'RING_TIP': 16,
-    'LITTLE_TIP': 20,
-    'WRIST': 0,
-}
-FRAME_SIZE = {'width': 480, 'height': 270}
-
-# intialise camera & optimise
+# initialize camera
 cap = cv2.VideoCapture(0, cv2.CAP_V4L2)  # Use V4L2 backend explicitly
-# cap = cv2.VideoCapture(
-#     "v4l2src device=/dev/video0 ! video/x-raw, width=960, height=540, framerate=60/1 ! videoconvert ! appsink",
-#     cv2.CAP_GSTREAMER
-# )
-
+# optimise camera
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
 cap.set(cv2.CAP_PROP_FPS, 60)
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # low latency
-# open in fullscreen
+
+### optional: open camera in fullscreen
 # window_name = "Hand Tracking"
 # cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
 # cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
-previous_data = None
 executor = ThreadPoolExecutor()
 
-
 def dist(lm1, lm2, w, h):
-    '''
-    Calculate Euclidian distance between 2 landmarks
-    '''
+    """Calculate Euclidian distance between 2 landmarks"""
+
     dx = (lm1.x - lm2.x) * w
     dy = (lm1.y - lm2.y) * h
     return math.sqrt(dx ** 2 + dy ** 2)
 
 
 async def process_frame(frame_queue, result_queue):
-    """Process each frame to track hand"""
+    """Process each camera frame to track hand movements"""
 
-    # Track real FPS
+    # calculate real FPS
     frame_count = 0
     start_time = time.time()
 
@@ -108,8 +91,6 @@ async def process_frame(frame_queue, result_queue):
 
 async def send_data(result_queue):
     """Send data over serial communication."""
-
-    global previous_data  # simple check to stop duplication of data for efficiency
 
     while True:
         results = await result_queue.get()  # retrieve landmarks from Asyncio queue
