@@ -266,6 +266,7 @@ async def main(data_queue=None):
     # initialize serial communication conditionally
     if RUN_MODE == "serial":
         import serial
+        ## EDIT PORT based to your camera input
         serial_port = serial.Serial('/dev/ttyGS0', 115200, timeout=1)
     else:
         serial_port = None
