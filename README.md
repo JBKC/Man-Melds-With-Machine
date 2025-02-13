@@ -1,5 +1,7 @@
 # Man-Melds-With-Machine
-Control your Mac using hand gestures, recorded by camera and interpreted by computer vision 
+Control your Mac in real-time using hand gestures, recorded by camera and interpreted by computer vision 
+
+High-level how it works = run code, raise one hand in front of camera, camera reads hand gesture, gesture gets interpreted into mouse / keyboard action, Mac is controlled 
 
 ## Commands and what they do
 1. Move cursor = open palm (reference point for movement is base of third finger)
