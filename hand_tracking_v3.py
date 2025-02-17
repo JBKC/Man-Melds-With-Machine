@@ -131,7 +131,9 @@ async def send_data(landmark_queue, data_queue, serial_port):
                         HAND_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
-                             FRAME_SIZE['width'], FRAME_SIZE['height'])
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].x -
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']].x > 0
                 ):
                     # reference for scroll movement = tip of index finger
                     scroll_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']]
@@ -158,11 +160,11 @@ async def send_data(landmark_queue, data_queue, serial_port):
 
                 ### CASE 3: drag mode - all fingers closed into fist (replaces exit code)
                 elif (
-                        HAND_SIZE/2 >
+                        HAND_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        HAND_SIZE/2 >
+                        HAND_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
@@ -173,7 +175,10 @@ async def send_data(landmark_queue, data_queue, serial_port):
                         HAND_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
-                             FRAME_SIZE['width'], FRAME_SIZE['height'])
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                        # final condition to ensure fist is achieved - thumb doubled back on itself along x-axis
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].x -
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']].x < 0
                 ):
 
                     # reference point for hand movement - thumb_tip easier to see when closed fist
@@ -227,7 +232,24 @@ async def send_data(landmark_queue, data_queue, serial_port):
                         hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
                         FRAME_SIZE['width'], FRAME_SIZE['height'])
 
-                    if THRESH > click:
+                    if (THRESH > click and
+                            # HAND_SIZE <
+                            # dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                            #      hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                            #      FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height'])
+                    ):
                         # send 1 byte
                         if RUN_MODE == "serial":
                             serial_port.write(b'C\n')
@@ -265,7 +287,24 @@ async def send_data(landmark_queue, data_queue, serial_port):
                         hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
                         FRAME_SIZE['width'], FRAME_SIZE['height'])
 
-                    if THRESH > tabf:
+                    if (THRESH > tabf and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            # HAND_SIZE <
+                            # dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                            #      hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                            #      FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height'])
+                    ):
                         # send 1 byte
                         if RUN_MODE == "serial":
                             serial_port.write(b'F\n')
@@ -278,7 +317,24 @@ async def send_data(landmark_queue, data_queue, serial_port):
                         hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
                         FRAME_SIZE['width'], FRAME_SIZE['height'])
 
-                    if THRESH > tabb:
+                    if (THRESH > tabb and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            # HAND_SIZE <
+                            # dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                            #      hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                            #      FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height'])
+                    ):
                         # send 1 byte
                         if RUN_MODE == "serial":
                             serial_port.write(b'B\n')
@@ -286,12 +342,29 @@ async def send_data(landmark_queue, data_queue, serial_port):
                             await data_queue.put(b'B\n')
 
                     ## CASE 2.5 -> mission control
-                    tabb = dist(
+                    tabm = dist(
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
                         hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                         FRAME_SIZE['width'], FRAME_SIZE['height'])
 
-                    if THRESH > tabb:
+                    if (THRESH > tabm and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            HAND_SIZE <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height'])
+                            # HAND_SIZE <
+                            # dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                            #      hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                            #      FRAME_SIZE['width'], FRAME_SIZE['height'])
+                    ):
                         # send 1 byte
                         if RUN_MODE == "serial":
                             serial_port.write(b'M\n')
