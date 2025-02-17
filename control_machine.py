@@ -193,6 +193,19 @@ async def process_data(data_queue, cur):
 
                     mouse.scroll(dx=0, dy=scroll_y)
 
+                # drag mode detected
+                if data.startswith(b'D'):
+                    scroll_anchor = None
+
+                    _, x_loc, y_loc = struct.unpack('=c2H', data)
+                    loc = [int(x_loc), 1000 - int(y_loc)]
+                    tar = map_to_screen(loc)
+
+                    # hold down left click + move cursor around (= grab + drag)
+                    with mouse.click(Button.left):
+                        cur = velocity_scale(cur, tar)
+
+
                 # cursor movement mode (default)
                 else:
                     scroll_anchor = None
