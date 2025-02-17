@@ -21,7 +21,7 @@ mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(
     static_image_mode=False,
-    max_num_hands=2,
+    max_num_hands=1,
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5,
 )
@@ -71,7 +71,7 @@ async def process_frame(frame_queue, landmark_queue):
         # Calculate FPS every second
         if elapsed_time > 1.0:
             fps = frame_count / elapsed_time
-            print(f"FPS: {fps:.2f}")
+            # print(f"FPS: {fps:.2f}")
             frame_count = 0  # Reset frame count
             start_time = time.time()  # Reset start time
 
@@ -115,8 +115,7 @@ async def send_data(landmark_queue, data_queue, serial_port):
                     FRAME_SIZE['width'], FRAME_SIZE['height'])
 
                 ### CASE 1: scrolling mode = index and middle finger extended, ring and little closed
-                ### SCROLL WITH RIGHT HAND
-                if (hand_label == 'R' and
+                if (
                         HAND_SIZE/2 <
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
@@ -158,8 +157,7 @@ async def send_data(landmark_queue, data_queue, serial_port):
                     # print(data)
 
                 ### CASE 3: drag mode - all fingers closed into fist (replaces exit code)
-                ### DRAG WITH LEFT HAND
-                if (hand_label == 'L' and
+                elif (
                         HAND_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
@@ -178,8 +176,8 @@ async def send_data(landmark_queue, data_queue, serial_port):
                              FRAME_SIZE['width'], FRAME_SIZE['height'])
                 ):
 
-                    # reference point for hand movement
-                    loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
+                    # reference point for hand movement - thumb_tip easier to see when closed fist
+                    loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
                     # normalise coords and flip axes
                     x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
                     # scale floats to integers for efficient sending over serial
@@ -196,7 +194,7 @@ async def send_data(landmark_queue, data_queue, serial_port):
 
 
                 ### CASE 2: cursor mode = open palm
-                else
+                else:
                     ## CASE 2.0 -> no commands: send realtime hand position
 
                     # reference point for hand movement
@@ -215,6 +213,8 @@ async def send_data(landmark_queue, data_queue, serial_port):
                         serial_port.write(data)
                     else:
                         await data_queue.put(data)
+
+                    # print(data)
 
                     ## CASE 2.1 -> click detected (click = touch tips of thumb and index finger)
                     # set distance threshold to register click
@@ -235,29 +235,29 @@ async def send_data(landmark_queue, data_queue, serial_port):
                             await data_queue.put(b'C\n')
 
                     ## CASE 2.2 -> exit (= close fist)
-                    if (
-                            HAND_SIZE >
-                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                                 hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
-                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                            HAND_SIZE >
-                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                                 hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
-                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                            HAND_SIZE/2 >
-                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                                 hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
-                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                            HAND_SIZE/2 >
-                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                                 hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
-                                 FRAME_SIZE['width'], FRAME_SIZE['height'])
-                    ):
-                        # send 1 byte
-                        if RUN_MODE == "serial":
-                            serial_port.write(b'E\n')
-                        else:
-                            await data_queue.put(b'E\n')
+                    # if (
+                    #         HAND_SIZE >
+                    #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                    #              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                    #              FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                    #         HAND_SIZE >
+                    #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                    #              hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                    #              FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                    #         HAND_SIZE/2 >
+                    #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                    #              hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                    #              FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                    #         HAND_SIZE/2 >
+                    #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                    #              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                    #              FRAME_SIZE['width'], FRAME_SIZE['height'])
+                    # ):
+                    #     # send 1 byte
+                    #     if RUN_MODE == "serial":
+                    #         serial_port.write(b'E\n')
+                    #     else:
+                    #         await data_queue.put(b'E\n')
 
                     ## CASE 2.3 -> change tab forward
                     tabf = dist(

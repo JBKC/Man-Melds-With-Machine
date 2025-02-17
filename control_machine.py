@@ -170,6 +170,7 @@ async def process_data(data_queue, cur):
 
         # Get the next packet from the queue
         data = await data_queue.get()
+        print(data)
 
         # Read movement packets
         if len(data) == 5:  # Movement and scroll packets: 1 char + 2 unsigned integers
@@ -198,13 +199,14 @@ async def process_data(data_queue, cur):
                     mouse.scroll(dx=0, dy=scroll_y)
 
                 # drag mode detected
-                if data.startswith(b'D'):
+                elif data.startswith(b'D'):
                     print("DRAG MODE")
 
                     scroll_anchor = None
 
                     _, x_loc, y_loc = struct.unpack('=c2H', data)
                     loc = [int(x_loc), 1000 - int(y_loc)]
+                    print(loc)
 
                     if not drag_mode:
                         # Start drag
