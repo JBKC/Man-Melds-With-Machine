@@ -135,8 +135,8 @@ async def send_data(landmark_queue, data_queue, serial_port):
                 ):
                     # reference for scroll movement = tip of index finger
                     scroll_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']]
-                    # reference for scroll anchor = MOVE_ID (base of middle finger)
-                    anchor_loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
+                    # reference for scroll anchor (reference point moves with hand so everything is relative)
+                    anchor_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_J']]
 
                     # normalise coord and flip axis
                     scroll_loc = 1.0 - scroll_loc.y
@@ -158,19 +158,19 @@ async def send_data(landmark_queue, data_queue, serial_port):
 
                 ### CASE 3: drag mode - all fingers closed into fist (replaces exit code)
                 elif (
-                        HAND_SIZE >
+                        HAND_SIZE/2 >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        HAND_SIZE >
+                        HAND_SIZE/2 >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        HAND_SIZE/2 >
+                        HAND_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        HAND_SIZE/2 >
+                        HAND_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height'])
@@ -236,19 +236,19 @@ async def send_data(landmark_queue, data_queue, serial_port):
 
                     ## CASE 2.2 -> exit (= close fist)
                     # if (
-                    #         HAND_SIZE >
+                    #         HAND_SIZE / 2 >
                     #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                     #              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
                     #              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                    #         HAND_SIZE >
+                    #         HAND_SIZE / 2 >
                     #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                     #              hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
                     #              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                    #         HAND_SIZE/2 >
+                    #         HAND_SIZE >
                     #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                     #              hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
                     #              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                    #         HAND_SIZE/2 >
+                    #         HAND_SIZE >
                     #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                     #              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                     #              FRAME_SIZE['width'], FRAME_SIZE['height'])

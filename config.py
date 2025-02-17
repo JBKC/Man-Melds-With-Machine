@@ -5,7 +5,8 @@ PARAMS = {
     'DAMP': 50,                 # higher damping = less jitter when holding your hand still
     'SENSITIVITY': 10,          # higher sensitivity = expands region on the screen where your hand is considered to be held still
     'STEPS': 20,                # higher steps = smoother cursor movement (too much and it will become slow)
-    'DELAY': 0.0001             # higher delay = longer time between calculating each step of the cursor position. avoid high steps and high delay
+    'DELAY': 0.0001,            # higher delay = longer time between calculating each step of the cursor position. avoid high steps and high delay
+    'SCROLL': 10
 }
 
 # mediapipe landmarks
@@ -13,7 +14,8 @@ HAND_LANDMARKS = {
     'MOVE_ID': 9,  # reference point of movement (base of third finger)
     'THUMB_TIP': 4,
     'INDEX_TIP': 8,
-    'THUMB_J': 3,  # reference for cliks (joint of thumb)
+    'INDEX_J': 6,  # anchor for scrolling (first joint on index finger)
+    'THUMB_J': 3,  # reference for clicks (joint of thumb)
     'MIDDLE_TIP': 12,
     'RING_TIP': 16,
     'LITTLE_TIP': 20,
