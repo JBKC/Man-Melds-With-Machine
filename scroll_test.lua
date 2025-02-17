@@ -36,4 +36,4 @@ end
 hs.hotkey.bind({}, "F6", function() smoothScroll(-scrollSpeed) end, stopScroll)
 hs.hotkey.bind({}, "F8", function() smoothScroll(scrollSpeed) end, stopScroll)
 
-hs.alert.show("Hammerspoon Smooth Scroll Loaded!")
+hs.alert.show("Hammerspoon Scroll Loaded!")
