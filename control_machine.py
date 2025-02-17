@@ -224,7 +224,11 @@ async def process_data(data_queue, cur):
                         drag_mode = False
                     if voice_mode == True:
                         pykeyboard.release(Key.alt)
-                        drag_mode = False
+                        # enter whatever text was input
+                        time.sleep(1.0)
+                        pykeyboard.press(Key.enter)
+                        pykeyboard.release(Key.enter)
+                        voice_mode = False
 
                     # Unpack binary data
                     _, scroll_loc, anchor_loc = struct.unpack('=c2H', data)
@@ -251,7 +255,11 @@ async def process_data(data_queue, cur):
                         zoom_mode = False
                     if voice_mode == True:
                         pykeyboard.release(Key.alt)
-                        drag_mode = False
+                        # enter whatever text was input
+                        time.sleep(1.0)
+                        pykeyboard.press(Key.enter)
+                        pykeyboard.release(Key.enter)
+                        voice_mode = False
 
                     _, x_loc, y_loc = struct.unpack('=c2H', data)
                     loc = [int(x_loc), 1000 - int(y_loc)]
@@ -279,7 +287,11 @@ async def process_data(data_queue, cur):
                         drag_mode = False
                     if voice_mode == True:
                         pykeyboard.release(Key.alt)
-                        drag_mode = False
+                        # enter whatever text was input
+                        time.sleep(1.0)
+                        pykeyboard.press(Key.enter)
+                        pykeyboard.release(Key.enter)
+                        voice_mode = False
 
                     # Unpack binary data (1 char + 2 unsigned integers)
                     hand_label, x_loc, y_loc = struct.unpack('=c2H', data)
@@ -320,7 +332,11 @@ async def process_data(data_queue, cur):
                     scroll_anchor = None
                     if voice_mode == True:
                         pykeyboard.release(Key.alt)
-                        drag_mode = False
+                        # enter whatever text was input
+                        time.sleep(1.0)
+                        pykeyboard.press(Key.enter)
+                        pykeyboard.release(Key.enter)
+                        voice_mode = False
 
                     # Unpack binary data
                     _, distance = struct.unpack('=cH', data)
