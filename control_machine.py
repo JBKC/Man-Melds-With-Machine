@@ -290,7 +290,8 @@ async def main(data_queue=None):
     # initialize data_queue if in serial mode
     elif RUN_MODE == "serial":
         import serial_asyncio
-        serial_port = await serial_asyncio.open_serial_connection(url='/dev/tty.usbmodem14101', baudrate=115200)
+        # serial_port = await serial_asyncio.open_serial_connection(url='/dev/tty.usbmodem14101', baudrate=115200)
+        serial_port = await serial_asyncio.open_serial_connection(url='/dev/tty.usbmodem14201', baudrate=115200)
         reader, writer = serial_port
 
         data_queue = asyncio.Queue()
