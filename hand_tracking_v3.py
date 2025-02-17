@@ -21,7 +21,7 @@ mp_hands = mp.solutions.hands
 mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(
     static_image_mode=False,
-    max_num_hands=1,
+    max_num_hands=2,
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5,
 )
@@ -101,10 +101,9 @@ async def send_data(landmark_queue, data_queue, serial_port):
             break
 
         if results.multi_hand_landmarks:
-            for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
+            num_hands = len(results.multi_hand_landmarks)
 
-                # print(hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].x -
-                #         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']].x)
+            for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
 
                 ### determine whether in cursor movement or scrolling mode
 
@@ -123,7 +122,7 @@ async def send_data(landmark_queue, data_queue, serial_port):
                     FRAME_SIZE['width'], FRAME_SIZE['height'])
 
                 ### CASE 1: scrolling mode = index and middle finger extended, ring and little closed
-                if (
+                if (num_hands == 1 and
                         FIST_SIZE/2 <
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
@@ -167,7 +166,7 @@ async def send_data(landmark_queue, data_queue, serial_port):
                     # print(data)
 
                 ### CASE 3: drag mode - all fingers closed into fist (replaces exit code)
-                elif (
+                elif (num_hands == 1 and
                         FIST_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
@@ -205,9 +204,31 @@ async def send_data(landmark_queue, data_queue, serial_port):
                         await data_queue.put(data)
                     # print(data)
 
+                ### CASE 4: zoom mode = 2 hands in view
+                elif num_hands == 2:
+
+                    if hand_label == 'R':
+                        right_lms = hand_landmarks
+                    if hand_label == 'L':
+                        left_lms = hand_landmarks
+
+                    right_loc = right_lms.landmark[HAND_LANDMARKS['MOVE_ID']]
+                    left_loc = left_lms.landmark[HAND_LANDMARKS['MOVE_ID']]
+
+                    x_left, y_left = 1.0 - left_loc.x, 1.0 - left_loc.y
+                    x_right, y_right = 1.0 - left_loc.x, 1.0 - left_loc.y
+
+                    # scale floats to integers for efficient sending over serial
+                    x_left = int(x_left * 1000)
+                    x_right = int(x_right * 1000)
+                    y_left = int(y_left * 1000)
+                    y_right = int(y_right * 1000)
+
+
+
 
                 ### CASE 2: cursor mode = open palm
-                else:
+                elif num_hands == 1:
                     ## CASE 2.0 -> no commands: send realtime hand position
 
                     # reference point for hand movement

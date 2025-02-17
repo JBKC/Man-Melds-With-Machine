@@ -6,7 +6,7 @@ PARAMS = {
     'SENSITIVITY': 10,          # higher sensitivity = expands region on the screen where your hand is considered to be held still
     'STEPS': 20,                # higher steps = smoother cursor movement (too much and it will become slow)
     'DELAY': 0.0001,            # higher delay = longer time between calculating each step of the cursor position. avoid high steps and high delay
-    'SCROLL': 10
+    'SCROLL': 10                # higher scroll = slower / "heavier" scrolling
 }
 
 # mediapipe landmarks
