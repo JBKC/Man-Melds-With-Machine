@@ -11,12 +11,13 @@ PARAMS = {
 
 # mediapipe landmarks
 HAND_LANDMARKS = {
-    'MOVE_ID': 9,  # reference point of movement (base of third finger)
+    'MOVE_ID': 9,       # reference point of movement (base of third finger)
     'THUMB_TIP': 4,
     'INDEX_TIP': 8,
-    'INDEX_J': 6,  # anchor for scrolling (first joint on index finger)
-    'THUMB_J': 3,  # reference for clicks (joint of thumb)
+    'INDEX_J': 6,       # anchor for scrolling (first joint on index finger)
+    'THUMB_J': 3,       # reference for clicks (joint of thumb)
     'MIDDLE_TIP': 12,
+    'MIDDLE_J': 10,     # reference for fist (first joint on middle finger)
     'RING_TIP': 16,
     'LITTLE_TIP': 20,
     'WRIST': 0,

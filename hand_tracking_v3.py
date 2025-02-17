@@ -103,6 +103,9 @@ async def send_data(landmark_queue, data_queue, serial_port):
         if results.multi_hand_landmarks:
             for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
 
+                # print(hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].x -
+                #         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']].x)
+
                 ### determine whether in cursor movement or scrolling mode
 
                 # get and mirror hand labels (due to mirrored screen)
@@ -113,22 +116,27 @@ async def send_data(landmark_queue, data_queue, serial_port):
                     hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                     hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']],
                     FRAME_SIZE['width'], FRAME_SIZE['height'])
+                # edited hand size for when base of middle finger is not visible
+                FIST_SIZE = dist(
+                    hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                    hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_J']],
+                    FRAME_SIZE['width'], FRAME_SIZE['height'])
 
                 ### CASE 1: scrolling mode = index and middle finger extended, ring and little closed
                 if (
-                        HAND_SIZE/2 <
+                        FIST_SIZE/2 <
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        HAND_SIZE/2 <
+                        FIST_SIZE/2 <
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        HAND_SIZE >
+                        FIST_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        HAND_SIZE >
+                        FIST_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
@@ -160,19 +168,19 @@ async def send_data(landmark_queue, data_queue, serial_port):
 
                 ### CASE 3: drag mode - all fingers closed into fist (replaces exit code)
                 elif (
-                        HAND_SIZE >
+                        FIST_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        HAND_SIZE >
+                        FIST_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        HAND_SIZE >
+                        FIST_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        HAND_SIZE >
+                        FIST_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and

@@ -182,7 +182,9 @@ async def process_data(data_queue, cur):
                 if data.startswith(b'S'):
                     print("SCROLL MODE")
 
-                    drag_mode = False
+                    if drag_mode == True:
+                        mouse.release(Button.left)
+                        drag_mode = False
 
                     # Unpack binary data
                     _, scroll_loc, anchor_loc = struct.unpack('=c2H', data)
@@ -209,7 +211,7 @@ async def process_data(data_queue, cur):
                     print(loc)
 
                     if not drag_mode:
-                        # Start drag
+                        # start drag - keep mouse pressed down
                         mouse.press(Button.left)
                         drag_mode = True
 
@@ -222,8 +224,11 @@ async def process_data(data_queue, cur):
 
                 # cursor movement mode (default)
                 else:
+                    if drag_mode == True:
+                        mouse.release(Button.left)
+                        drag_mode = False
+
                     scroll_anchor = None
-                    drag_mode = False
 
                     # Unpack binary data (1 char + 2 unsigned integers)
                     hand_label, x_loc, y_loc = struct.unpack('=c2H', data)
