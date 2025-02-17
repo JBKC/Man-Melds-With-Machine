@@ -36,6 +36,7 @@ y_buffer = deque(maxlen=buffer_size)
 last_click = 0
 cooldown = 0.5          # seconds
 scroll_anchor = None
+drag_mode = False
 
 
 ########
@@ -163,7 +164,7 @@ async def read_serial(serial_reader, data_queue):
 async def process_data(data_queue, cur):
     """Process serial data and perform cursor actions"""
 
-    global last_click, scroll_anchor
+    global last_click, scroll_anchor, drag_mode
 
     while True:
 
@@ -178,6 +179,9 @@ async def process_data(data_queue, cur):
 
                 # scrolling mode detected
                 if data.startswith(b'S'):
+                    print("SCROLL MODE")
+
+                    drag_mode = False
 
                     # Unpack binary data
                     _, scroll_loc, anchor_loc = struct.unpack('=c2H', data)
@@ -195,20 +199,29 @@ async def process_data(data_queue, cur):
 
                 # drag mode detected
                 if data.startswith(b'D'):
+                    print("DRAG MODE")
+
                     scroll_anchor = None
 
                     _, x_loc, y_loc = struct.unpack('=c2H', data)
                     loc = [int(x_loc), 1000 - int(y_loc)]
-                    tar = map_to_screen(loc)
 
-                    # hold down left click + move cursor around (= grab + drag)
-                    with mouse.click(Button.left):
+                    if not drag_mode:
+                        # Start drag
+                        mouse.press(Button.left)
+                        drag_mode = True
+
+                    else:
+                        # Update position during dragging
+                        tar = map_to_screen(loc)
                         cur = velocity_scale(cur, tar)
+                        print(f"Dragging: {tar}")
 
 
                 # cursor movement mode (default)
                 else:
                     scroll_anchor = None
+                    drag_mode = False
 
                     # Unpack binary data (1 char + 2 unsigned integers)
                     hand_label, x_loc, y_loc = struct.unpack('=c2H', data)
