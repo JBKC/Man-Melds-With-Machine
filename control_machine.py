@@ -236,9 +236,9 @@ async def process_data(data_queue, cur):
 
                     mouse.scroll(dx=0, dy=scroll_y)
 
-                # speech mode detected
+                # drag mode detected
                 elif data.startswith(b'D'):
-                    print("ACTIVATE MODE")
+                    print("DRAG MODE")
 
                     scroll_anchor = None
                     zoom_anchor = None
@@ -252,11 +252,12 @@ async def process_data(data_queue, cur):
 
                     if not drag_mode:
                         # start drag - keep mouse pressed down
-                        pykeyboard.press(Key.alt)
+                        mouse.press(Button.left)
                         drag_mode = True
 
                     else:
-                        pass
+                        cur = map_to_screen(loc)
+                        mouse.position = (cur[0], cur[1])
 
                 # cursor movement mode (default)
                 else:

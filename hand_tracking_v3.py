@@ -225,14 +225,11 @@ async def send_data(landmark_queue, data_queue, serial_port):
                              FRAME_SIZE['width'], FRAME_SIZE['height'])
                 ):
 
-                    # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
-                    data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
+                    # 2 bytes = 1 char (V for voice) + newline
                     if RUN_MODE == "serial":
-                        serial_port.write(data)
+                        serial_port.write(b'V\n')
                     else:
-                        await data_queue.put(data)
-                    # print(data)
-
+                        serial_port.write(b'V\n')
 
                 ### CASE 5: zoom mode = 2 hands in view (not currently functional)
                 elif num_hands == 2:
