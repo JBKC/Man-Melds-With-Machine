@@ -72,7 +72,7 @@ async def process_frame(frame_queue, landmark_queue):
         # Calculate FPS every second
         if elapsed_time > 1.0:
             fps = frame_count / elapsed_time
-            # print(f"FPS: {fps:.2f}")
+            print(f"FPS: {fps:.2f}")
             frame_count = 0  # Reset frame count
             start_time = time.time()  # Reset start time
 
@@ -224,14 +224,6 @@ async def send_data(landmark_queue, data_queue, serial_port):
                              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height'])
                 ):
-
-                    # reference point for hand movement - thumb_tip easier to see when closed fist
-                    loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
-                    # normalise coords and flip axes
-                    x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
-                    # scale floats to integers for efficient sending over serial
-                    x_loc = int(x_loc * 1000)
-                    y_loc = int(y_loc * 1000)
 
                     # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
                     data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
