@@ -36,7 +36,38 @@ y_buffer = deque(maxlen=buffer_size)
 last_click = 0
 cooldown = 0.5          # seconds
 scroll_anchor = None
+zoom_anchor = None
+zoom_mode = False
 drag_mode = False
+
+# from Quartz.CoreGraphics import (
+#     CGEventCreateKeyboardEvent,
+#     CGEventCreateScrollWheelEvent,
+#     CGEventPost,
+#     kCGEventScrollWheel,
+#     kCGSessionEventTap,
+#     kCGEventFlagMaskCommand,
+#     kCGEventKeyDown,
+#     kCGEventKeyUp
+# )
+#
+# def press_cmd():
+#     """Press down the Command key."""
+#     cmd_keycode = 0x37  # 0x37 is the keycode for Cmd (Command key)
+#     event = CGEventCreateKeyboardEvent(None, cmd_keycode, True)  # True for key press
+#     CGEventPost(kCGSessionEventTap, event)
+#
+# def release_cmd():
+#     """Release the Command key."""
+#     cmd_keycode = 0x37  # 0x37 is the keycode for Cmd
+#     event = CGEventCreateKeyboardEvent(None, cmd_keycode, False)  # False for key release
+#     CGEventPost(kCGSessionEventTap, event)
+#
+# def scroll_event(dy):
+#     """Send a smooth scroll event with the Command key held down."""
+#     scroll_event = CGEventCreateScrollWheelEvent(None, 0, 1, dy)  # Scroll on 1 axis, dy is the scroll amount
+#     CGEventPost(kCGSessionEventTap, scroll_event)  # Post the scroll event
+
 
 
 ########
@@ -164,13 +195,13 @@ async def read_serial(serial_reader, data_queue):
 async def process_data(data_queue, cur):
     """Process serial data and perform cursor actions"""
 
-    global last_click, scroll_anchor, drag_mode
+    global last_click, scroll_anchor, zoom_anchor, zoom_mode, drag_mode
 
     while True:
 
         # Get the next packet from the queue
         data = await data_queue.get()
-        print(data)
+        # print(data)
 
         # Read movement packets
         if len(data) == 5:  # Movement and scroll packets: 1 char + 2 unsigned integers
@@ -182,6 +213,11 @@ async def process_data(data_queue, cur):
                 if data.startswith(b'S'):
                     print("SCROLL MODE")
 
+                    zoom_mode = False
+                    zoom_anchor = None
+                    if zoom_mode == True:
+                        release_cmd()  # Release Cmd
+                        zoom_mode = False
                     if drag_mode == True:
                         mouse.release(Button.left)
                         drag_mode = False
@@ -200,35 +236,39 @@ async def process_data(data_queue, cur):
 
                     mouse.scroll(dx=0, dy=scroll_y)
 
-                # drag mode detected
+                # speech mode detected
                 elif data.startswith(b'D'):
-                    print("DRAG MODE")
+                    print("ACTIVATE MODE")
 
                     scroll_anchor = None
+                    zoom_anchor = None
+                    if zoom_mode == True:
+                        release_cmd()  # Release Cmd
+                        zoom_mode = False
 
                     _, x_loc, y_loc = struct.unpack('=c2H', data)
                     loc = [int(x_loc), 1000 - int(y_loc)]
-                    print(loc)
+                    # print(loc)
 
                     if not drag_mode:
                         # start drag - keep mouse pressed down
-                        mouse.press(Button.left)
+                        pykeyboard.press(Key.alt)
                         drag_mode = True
 
                     else:
-                        # Update position during dragging
-                        tar = map_to_screen(loc)
-                        cur = velocity_scale(cur, tar)
-                        print(f"Dragging: {tar}")
-
+                        pass
 
                 # cursor movement mode (default)
                 else:
+
+                    scroll_anchor = None
+                    zoom_anchor = None
+                    if zoom_mode == True:
+                        release_cmd()  # Release Cmd
+                        zoom_mode = False
                     if drag_mode == True:
                         mouse.release(Button.left)
                         drag_mode = False
-
-                    scroll_anchor = None
 
                     # Unpack binary data (1 char + 2 unsigned integers)
                     hand_label, x_loc, y_loc = struct.unpack('=c2H', data)
@@ -253,6 +293,42 @@ async def process_data(data_queue, cur):
 
             except Exception as e:
                 print(f"Error processing movement data: {e}")
+
+        # zoom packets
+        ## NOTE - zoom functionality not yet working - placeholder
+        elif len(data) == 3:
+
+            try:
+                # zoom mode detected
+                if data.startswith(b'Z'):
+                    print("ZOOM MODE")
+
+                    if drag_mode == True:
+                        mouse.release(Button.left)
+                        drag_mode = False
+                    scroll_anchor = None
+
+                    # Unpack binary data
+                    _, distance = struct.unpack('=cH', data)
+                    # print(distance)
+
+                    # set zoom anchor (initial distance)
+                    if zoom_anchor is None:
+                        zoom_anchor = distance
+
+                    if not zoom_mode:
+                        # start zoom - keep cmd pressed down
+                        press_cmd()  # Press down Cmd
+                        zoom_mode = True
+                    else:
+                        # Update position during dragging
+                        zoom = int((zoom_anchor - distance) / PARAMS['SCROLL'])
+                        scroll_event(zoom)  # Send smooth scroll event
+                        # mouse.scroll(dx=0, dy=zoom)
+                        print(zoom)
+
+            except Exception as e:
+                print(f"Error processing zoom data: {e}")
 
         # Read command packets
         elif len(data) == 1:  # Command packet: 1 byte
