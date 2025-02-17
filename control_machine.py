@@ -194,7 +194,7 @@ async def process_data(data_queue, cur):
                     if scroll_anchor is None:
                         scroll_anchor = anchor_loc
 
-                    scroll_y = int((scroll_anchor - scroll_loc) / 10)
+                    scroll_y = int((scroll_anchor - scroll_loc) / PARAMS['SCROLL'])
 
                     mouse.scroll(dx=0, dy=scroll_y)
 
