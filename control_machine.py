@@ -39,6 +39,7 @@ scroll_anchor = None
 zoom_anchor = None
 zoom_mode = False
 drag_mode = False
+voice_mode = False
 
 # from Quartz.CoreGraphics import (
 #     CGEventCreateKeyboardEvent,
@@ -195,7 +196,7 @@ async def read_serial(serial_reader, data_queue):
 async def process_data(data_queue, cur):
     """Process serial data and perform cursor actions"""
 
-    global last_click, scroll_anchor, zoom_anchor, zoom_mode, drag_mode
+    global last_click, scroll_anchor, zoom_anchor, zoom_mode, drag_mode, voice_mode
 
     while True:
 
@@ -221,6 +222,9 @@ async def process_data(data_queue, cur):
                     if drag_mode == True:
                         mouse.release(Button.left)
                         drag_mode = False
+                    if voice_mode == True:
+                        pykeyboard.release(Key.alt)
+                        drag_mode = False
 
                     # Unpack binary data
                     _, scroll_loc, anchor_loc = struct.unpack('=c2H', data)
@@ -245,6 +249,9 @@ async def process_data(data_queue, cur):
                     if zoom_mode == True:
                         release_cmd()  # Release Cmd
                         zoom_mode = False
+                    if voice_mode == True:
+                        pykeyboard.release(Key.alt)
+                        drag_mode = False
 
                     _, x_loc, y_loc = struct.unpack('=c2H', data)
                     loc = [int(x_loc), 1000 - int(y_loc)]
@@ -269,6 +276,9 @@ async def process_data(data_queue, cur):
                         zoom_mode = False
                     if drag_mode == True:
                         mouse.release(Button.left)
+                        drag_mode = False
+                    if voice_mode == True:
+                        pykeyboard.release(Key.alt)
                         drag_mode = False
 
                     # Unpack binary data (1 char + 2 unsigned integers)
@@ -308,6 +318,9 @@ async def process_data(data_queue, cur):
                         mouse.release(Button.left)
                         drag_mode = False
                     scroll_anchor = None
+                    if voice_mode == True:
+                        pykeyboard.release(Key.alt)
+                        drag_mode = False
 
                     # Unpack binary data
                     _, distance = struct.unpack('=cH', data)
@@ -334,6 +347,28 @@ async def process_data(data_queue, cur):
         # Read command packets
         elif len(data) == 1:  # Command packet: 1 byte
             command = data
+
+            if command == b'V':      # voice command
+                print("VOICE MODE")
+
+                scroll_anchor = None
+                zoom_anchor = None
+                if zoom_mode == True:
+                    release_cmd()  # Release Cmd
+                    zoom_mode = False
+                if drag_mode == True:
+                    mouse.release(Button.left)
+                    drag_mode = False
+
+                if not voice_mode:
+                    # activate voice mode
+                    pykeyboard.press(Key.alt)
+                    voice_mode = True
+
+                else:
+                    # if voice mode already activated with gesture active, do nothing (user is speaking)
+                    pass
+
             if command == b'C':  # Click command
                 current_time = time.time()
                 if current_time - last_click > cooldown:
