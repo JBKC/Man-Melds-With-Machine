@@ -42,6 +42,12 @@ cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # low latency
 
 executor = ThreadPoolExecutor()
 
+## failsafe for drag mode
+# if mediapipe drops / glitches, it can exit drag abruptly, and this can be jarring
+# it can often mistake drag for other gestures where fingers are closed
+# therefore need a cooldown on the drag gesture to make sure it has been exited properly before performing a new action
+last_drag = 0
+cooldown = 1.0          # seconds
 
 def dist(lm1, lm2, w, h):
     """Calculate Euclidian distance between 2 landmarks"""
@@ -49,7 +55,6 @@ def dist(lm1, lm2, w, h):
     dx = (lm1.x - lm2.x) * w
     dy = (lm1.y - lm2.y) * h
     return math.sqrt(dx ** 2 + dy ** 2)
-
 
 async def process_frame(frame_queue, landmark_queue):
     """Process each camera frame to track hand movements"""
@@ -89,12 +94,13 @@ async def process_frame(frame_queue, landmark_queue):
 
         await landmark_queue.put(results)
 
-
 async def send_data(landmark_queue, data_queue, serial_port):
     """
     RUN_MODE = serial: sends data packets over serial to be read by control_machine.py
     RUN_MODE = async: appends data packets to queues to be read by control_machine.py
     """
+
+    global last_drag
 
     while True:
         results = await landmark_queue.get()  # retrieve landmarks from Asyncio queue
@@ -143,28 +149,53 @@ async def send_data(landmark_queue, data_queue, serial_port):
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].x -
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']].x > 0
                 ):
-                    # reference for scroll movement = tip of index finger
-                    scroll_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']]
-                    # reference for scroll anchor (reference point moves with hand so everything is relative)
-                    anchor_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_J']]
 
-                    # normalise coord and flip axis
-                    scroll_loc = 1.0 - scroll_loc.y
-                    anchor_loc = 1.0 - anchor_loc.y
-                    # scale float to integer for efficient sending over serial
-                    scroll_loc = int(scroll_loc * 1000)
-                    anchor_loc = int(anchor_loc * 1000)
+                    current_time = time.time()
 
-                    # binary encode the data for sending over serial with no padding
-                    # 6 bytes = 1 char (S for scrolling) + 2 int (scroll and move y-locations) + newline
-                    data = struct.pack('=c2H', b'S', scroll_loc, anchor_loc) + b'\n'
+                    # if perceived to be a scroll BUT are currently dragging - very likely to be a 'misread' drag
+                    if current_time - last_drag > cooldown:
+                        last_drag = current_time
+                        loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
+                        # normalise coords and flip axes
+                        x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
+                        # scale floats to integers for efficient sending over serial
+                        x_loc = int(x_loc * 1000)
+                        y_loc = int(y_loc * 1000)
 
-                    # transmit data depending on mode
-                    if RUN_MODE == "serial":
-                        serial_port.write(data)
+                        # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
+                        data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
+                        if RUN_MODE == "serial":
+                            serial_port.write(data)
+                        else:
+                            await data_queue.put(data)
+                        # print(data)
+
+
                     else:
-                        await data_queue.put(data)
-                    # print(data)
+                        # if there wasn't a drag recently, it's a scroll
+
+                        # reference for scroll movement = tip of index finger
+                        scroll_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']]
+                        # reference for scroll anchor (reference point moves with hand so everything is relative)
+                        anchor_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_J']]
+
+                        # normalise coord and flip axis
+                        scroll_loc = 1.0 - scroll_loc.y
+                        anchor_loc = 1.0 - anchor_loc.y
+                        # scale float to integer for efficient sending over serial
+                        scroll_loc = int(scroll_loc * 1000)
+                        anchor_loc = int(anchor_loc * 1000)
+
+                        # binary encode the data for sending over serial with no padding
+                        # 6 bytes = 1 char (S for scrolling) + 2 int (scroll and move y-locations) + newline
+                        data = struct.pack('=c2H', b'S', scroll_loc, anchor_loc) + b'\n'
+
+                        # transmit data depending on mode
+                        if RUN_MODE == "serial":
+                            serial_port.write(data)
+                        else:
+                            await data_queue.put(data)
+                        # print(data)
 
                 ### CASE 3: drag mode - all fingers closed into fist (replaces exit code)
                 elif (
@@ -188,6 +219,10 @@ async def send_data(landmark_queue, data_queue, serial_port):
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].x -
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']].x < 0
                 ):
+
+                    # reset drag timer
+                    current_time = time.time()
+                    last_drag = current_time
 
                     # reference point for hand movement - thumb_tip easier to see when closed fist
                     loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
@@ -273,6 +308,7 @@ async def send_data(landmark_queue, data_queue, serial_port):
                 ### CASE 2: cursor mode = open palm
                 else:
                     ## CASE 2.0 -> no commands: send realtime hand position
+                    # (this is the primary way to exit a drag)
 
                     # reference point for hand movement
                     loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
@@ -322,11 +358,32 @@ async def send_data(landmark_queue, data_queue, serial_port):
                                  hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
-                        # send 1 byte
-                        if RUN_MODE == "serial":
-                            serial_port.write(b'C\n')
+
+                        # drag failsafe
+                        current_time = time.time()
+
+                        if current_time - last_drag > cooldown:
+                            last_drag = current_time
+                            loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
+                            # normalise coords and flip axes
+                            x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
+                            # scale floats to integers for efficient sending over serial
+                            x_loc = int(x_loc * 1000)
+                            y_loc = int(y_loc * 1000)
+
+                            # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
+                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
+                            if RUN_MODE == "serial":
+                                serial_port.write(data)
+                            else:
+                                await data_queue.put(data)
+                            # print(data)
                         else:
-                            await data_queue.put(b'C\n')
+                            # send 1 byte
+                            if RUN_MODE == "serial":
+                                serial_port.write(b'C\n')
+                            else:
+                                await data_queue.put(b'C\n')
 
                     ## CASE 2.2 -> exit (= close fist)
                     # if (
@@ -377,11 +434,32 @@ async def send_data(landmark_queue, data_queue, serial_port):
                                  hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
-                        # send 1 byte
-                        if RUN_MODE == "serial":
-                            serial_port.write(b'F\n')
+                        # drag failsafe
+                        current_time = time.time()
+
+                        if current_time - last_drag > cooldown:
+                            last_drag = current_time
+                            loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
+                            # normalise coords and flip axes
+                            x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
+                            # scale floats to integers for efficient sending over serial
+                            x_loc = int(x_loc * 1000)
+                            y_loc = int(y_loc * 1000)
+
+                            # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
+                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
+                            if RUN_MODE == "serial":
+                                serial_port.write(data)
+                            else:
+                                await data_queue.put(data)
+                            # print(data)
+
                         else:
-                            await data_queue.put(b'F\n')
+                            # send 1 byte
+                            if RUN_MODE == "serial":
+                                serial_port.write(b'F\n')
+                            else:
+                                await data_queue.put(b'F\n')
 
                     ## CASE 2.4 -> change tab backward
                     tabb = dist(
@@ -407,11 +485,32 @@ async def send_data(landmark_queue, data_queue, serial_port):
                                  hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
-                        # send 1 byte
-                        if RUN_MODE == "serial":
-                            serial_port.write(b'B\n')
+                        # drag failsafe
+                        current_time = time.time()
+
+                        if current_time - last_drag > cooldown:
+                            last_drag = current_time
+                            loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
+                            # normalise coords and flip axes
+                            x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
+                            # scale floats to integers for efficient sending over serial
+                            x_loc = int(x_loc * 1000)
+                            y_loc = int(y_loc * 1000)
+
+                            # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
+                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
+                            if RUN_MODE == "serial":
+                                serial_port.write(data)
+                            else:
+                                await data_queue.put(data)
+                            # print(data)
+
                         else:
-                            await data_queue.put(b'B\n')
+                            # send 1 byte
+                            if RUN_MODE == "serial":
+                                serial_port.write(b'B\n')
+                            else:
+                                await data_queue.put(b'B\n')
 
                     ## CASE 2.5 -> mission control
                     tabm = dist(
@@ -437,14 +536,32 @@ async def send_data(landmark_queue, data_queue, serial_port):
                             #      hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                             #      FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
-                        # send 1 byte
-                        if RUN_MODE == "serial":
-                            serial_port.write(b'M\n')
+                        # drag failsafe
+                        current_time = time.time()
+
+                        if current_time - last_drag > cooldown:
+                            last_drag = current_time
+                            loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
+                            # normalise coords and flip axes
+                            x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
+                            # scale floats to integers for efficient sending over serial
+                            x_loc = int(x_loc * 1000)
+                            y_loc = int(y_loc * 1000)
+
+                            # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
+                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
+                            if RUN_MODE == "serial":
+                                serial_port.write(data)
+                            else:
+                                await data_queue.put(data)
+                            # print(data)
+
                         else:
-                            await data_queue.put(b'M\n')
-
-
-
+                            # send 1 byte
+                            if RUN_MODE == "serial":
+                                serial_port.write(b'M\n')
+                            else:
+                                await data_queue.put(b'M\n')
 
 async def main(data_queue=None):
     """Main event loop"""

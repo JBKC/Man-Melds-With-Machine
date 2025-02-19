@@ -24,4 +24,5 @@ HAND_LANDMARKS = {
 }
 
 # define virtual frame size in pixels (480x270 is a good tradeoff between resolution and processing speed)
-FRAME_SIZE = {'width': 480, 'height': 270}
+# FRAME_SIZE = {'width': 480, 'height': 270}
+FRAME_SIZE = {'width': 960, 'height': 540}
