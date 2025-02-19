@@ -26,7 +26,6 @@ pykeyboard = KeyboardController()
 
 def get_screen_bounds():
     """Returns a list of screen bounds [(x_start, y_start, width, height)] for macOS"""
-    from AppKit import NSScreen
     screens = NSScreen.screens()
     return [(int(s.frame().origin.x), int(s.frame().origin.y), int(s.frame().size.width), int(s.frame().size.height)) for s in screens]
 
