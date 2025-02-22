@@ -2,9 +2,9 @@
 # set subjective parameters for UX
 PARAMS = {
     'GAIN': 5000,               # higher gain = faster cursor movement
-    'DAMP': 50,                 # higher damping = less jitter when holding your hand still
-    'SENSITIVITY': 10,          # higher sensitivity = expands region on the screen where your hand is considered to be held still
-    'STEPS': 20,                # higher steps = smoother cursor movement (too much and it will become slow)
+    'DAMP': 10,                 # higher damping = less jitter when holding your hand still
+    'SENSITIVITY': 5,          # higher sensitivity = expands region on the screen where your hand is considered to be held still
+    'STEPS': 50,                # higher steps = smoother cursor movement (too much and it will become slow)
     'DELAY': 0.0001,            # higher delay = longer time between calculating each step of the cursor position. avoid high steps and high delay
     'SCROLL': 10                # higher scroll = slower / "heavier" scrolling
 }

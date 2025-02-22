@@ -534,8 +534,8 @@ async def main(data_queue=None):
             await frame_queue.put(frame)
 
             ### optional: display the frame
-            mirror = cv2.flip(frame, 1)
-            cv2.imshow("Hand Tracking", mirror)
+            # mirror = cv2.flip(frame, 1)
+            # cv2.imshow("Hand Tracking", mirror)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break

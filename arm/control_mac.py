@@ -1,7 +1,6 @@
 '''
 Translates data hand data into mouse and keyboard actions
 3 categories: cursor movement, scroll, commands
-Call script directly only when processing camera feed on a separate machine (e.g. Raspberry Pi)
 '''
 
 from pynput.mouse import Controller as MouseController, Button
@@ -350,8 +349,9 @@ async def process_data(data_queue, cur):
 
             if command == b'C':  # Click command
                 current_time = time.time()
+
                 if current_time - last_click > cooldown:
-                    mouse.click(Button.left)
+                    mouse.press(Button.left)
                     print("CLICK")
                     last_click = current_time
                 else:
