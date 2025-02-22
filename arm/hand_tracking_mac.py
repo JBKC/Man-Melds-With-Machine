@@ -24,8 +24,8 @@ hands = mp_hands.Hands(
 )
 
 # initialize camera
-cap = cv2.VideoCapture(0, cv2.CAP_V4L2)  # Use V4L2 backend explicitly
-# optimise camera
+cap = cv2.VideoCapture(0)
+
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
 cap.set(cv2.CAP_PROP_FPS, FPS)
@@ -515,7 +515,7 @@ async def main(data_queue=None):
     landmark_queue = asyncio.Queue()            # stores landmarks within the frames
 
     if not cap.isOpened():
-        print("Error: Unable to open camera.")
+        print("Error: Unable to open camera")
         return
 
     # create and immediately run tasks
