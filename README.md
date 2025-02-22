@@ -3,7 +3,7 @@ Control your Mac in real-time using hand gestures, recorded by camera and interp
 
 High-level how it works = run code, raise one hand in front of camera, camera reads hand gesture, gesture gets interpreted into mouse / keyboard action, Mac is controlled 
 
-See demo here: https://x.com/jbelevate/status/1888661396189290976
+See demo here: https://x.com/jbelevate/status/1891604727923704078
 
 ## Commands and what they do
 1. Move cursor = open palm (reference point for movement is base of third finger)
