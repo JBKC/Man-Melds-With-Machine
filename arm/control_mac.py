@@ -6,7 +6,7 @@ Call script directly only when processing camera feed on a separate machine (e.g
 
 from pynput.mouse import Controller as MouseController, Button
 from pynput.keyboard import Controller as KeyboardController, Key
-# import pyautogui
+import pyautogui
 from screeninfo import get_monitors
 from collections import deque
 import asyncio
@@ -163,7 +163,10 @@ async def process_data(data_queue, cur):
 
         # Get the next packet from the queue
         data = await data_queue.get()
-        # print(data)
+        # remove newline
+        data = data[:-1]
+        print(data)
+        print(len(data))
 
         # Read movement packets
         if len(data) == 5:  # Movement and scroll packets: 1 char + 2 unsigned integers
