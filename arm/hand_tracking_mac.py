@@ -24,7 +24,7 @@ hands = mp_hands.Hands(
 )
 
 # initialize camera
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
@@ -534,8 +534,8 @@ async def main(data_queue=None):
             await frame_queue.put(frame)
 
             ### optional: display the frame
-            # mirror = cv2.flip(frame, 1)
-            # cv2.imshow("Hand Tracking", mirror)
+            mirror = cv2.flip(frame, 1)
+            cv2.imshow("Hand Tracking", mirror)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break

@@ -5,6 +5,7 @@ Script for running both the camera tracking and machine controller scripts async
 import asyncio
 import hand_tracking_mac as hand_tracking
 import control_mac
+# import control_all_monitors as control_mac
 
 async def run_scripts():
     """Simultaneously call 2 scripts"""

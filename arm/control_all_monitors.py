@@ -6,19 +6,13 @@ Call script directly only when processing camera feed on a separate machine (e.g
 
 from pynput.mouse import Controller as MouseController, Button
 from pynput.keyboard import Controller as KeyboardController, Key
-import keyboard
 import pyautogui
-from screeninfo import get_monitors
 from collections import deque
 import asyncio
 import time
-import sys
 import struct
 from AppKit import NSScreen
 from config import PARAMS
-
-# define RUN_MODE
-RUN_MODE = "serial" if __name__ == "__main__" else "async"
 
 # Initialize
 mouse = MouseController()
@@ -177,43 +171,9 @@ def interpolate(start, end, steps=PARAMS['STEPS'], delay=PARAMS['DELAY']):
         # Small delay to ensure smooth visual movement
         time.sleep(delay)
 
-async def read_serial(serial_reader, data_queue):
-    """
-    Read data asynchronously from the serial port
-    Protocol =
-    2 bytes for command (1 char + newline)
-    6 bytes for scroll (1 char + 2 int + newline)
-    6 bytes for cursor movement (1 char + 2 int + newline)
-    """
-    buffer = b''  # store packets as they come in
-
-    while True:
-        start_read = time.time()
-
-        try:
-            # read 1 byte of data and immediately append to buffer
-            chunk = await serial_reader.read(1)
-            if not chunk:
-                continue  # Skip if no data is received
-
-            buffer += chunk
-
-            # Process complete packets (ending with newline)
-            while b'\n' in buffer:
-                line, buffer = buffer.split(b'\n', 1)  # Split at the first newline
-                if len(line) > 0:
-                    await data_queue.put(line)  # Queue the complete packet
-
-                    end_read = time.time()
-                    # print(f"Time to process 1 packet: {end_read - start_read:.6f} seconds")
-
-        except Exception as e:
-            print(f"Error reading serial data: {e}")
-            break
-
 
 async def process_data(data_queue, cur):
-    """Process serial data and perform cursor actions"""
+    """Process data and perform cursor actions"""
 
     global last_click, scroll_anchor, zoom_anchor, zoom_mode, drag_mode, voice_mode
 
@@ -221,6 +181,8 @@ async def process_data(data_queue, cur):
 
         # Get the next packet from the queue
         data = await data_queue.get()
+        # remove newline
+        data = data[:-1]
         # print(data)
 
         # Read movement packets
@@ -458,35 +420,13 @@ async def main(data_queue=None):
     # set initial cur_x, cur_y
     cur = [0,0]
 
-    # get data_queue from hand_tracking script if in async mode
-    if RUN_MODE == "async" and data_queue is not None:
-        try:
-            await process_data(data_queue, cur)
+    # process received data
+    try:
+        await process_data(data_queue, cur)
 
-        except StopException:
-            # if "stop" received, shut down program gracefully
-            print("PROGRAM ENDED")
-
-    # initialize data_queue if in serial mode
-    elif RUN_MODE == "serial":
-        import serial_asyncio
-        # serial_port = await serial_asyncio.open_serial_connection(url='/dev/tty.usbmodem14101', baudrate=115200)
-        serial_port = await serial_asyncio.open_serial_connection(url='/dev/tty.usbmodem14201', baudrate=115200)
-        reader, writer = serial_port
-
-        data_queue = asyncio.Queue()
-
-        try:
-            # create and run tasks for reading and processing data
-            async with asyncio.TaskGroup() as tg:
-                tg.create_task(read_serial(reader, data_queue))
-                tg.create_task(process_data(data_queue, cur))
-
-        except StopException:
-            # if "stop" received, shut down program gracefully
-            print("PROGRAM ENDED")
-    else:
-        print("Invalid RUN_MODE or missing data_queue")
+    except StopException:
+        # if "stop" received, shut down program gracefully
+        print("PROGRAM ENDED")
 
 
 if __name__ == "__main__":

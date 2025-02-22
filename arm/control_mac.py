@@ -165,8 +165,7 @@ async def process_data(data_queue, cur):
         data = await data_queue.get()
         # remove newline
         data = data[:-1]
-        print(data)
-        print(len(data))
+        # print(data)
 
         # Read movement packets
         if len(data) == 5:  # Movement and scroll packets: 1 char + 2 unsigned integers
@@ -403,18 +402,9 @@ async def main(data_queue=None):
     # set initial cur_x, cur_y
     cur = [0,0]
 
-    # get data_queue from hand_tracking script
+    # process received data
     try:
         await process_data(data_queue, cur)
-
-    except StopException:
-        # if "stop" received, shut down program gracefully
-        print("PROGRAM ENDED")
-
-    try:
-        # create and run tasks for reading and processing data
-        async with asyncio.TaskGroup() as tg:
-            tg.create_task(process_data(data_queue, cur))
 
     except StopException:
         # if "stop" received, shut down program gracefully
