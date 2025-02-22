@@ -32,27 +32,16 @@ See demo here: https://x.com/jbelevate/status/1888661396189290976
    ```
 
 ## Run it
-Program revolves around 2 scripts - `hand_tracking_v2.py` and `control_machine.py`.
+Program revolves around 2 scripts - `hand_tracking_mac.py` and `control_mac.py` within the `arm` folder.
 First script reads camera frames and sends data to second script, which translates data into mouse / keyboard actions.
 Use `config.py` to change paramaters including how the UX feels
 
-### 1. If operating from a single machine
 Run
 ```
 main_script.py
 ```
 This will automatically call both scripts simultaneously - just raise your hand to begin controlling the screen
 
-### 2. If operating off 2 machines (e.g. Mac and Raspberry Pi)
-Run 
-```
-hand_tracking_v2.py
-```
-on the Pi, and
-```
-control_machine.py
-```
-on the Mac. Then raise hand to start moving the cursor around
 
 
 
