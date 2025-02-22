@@ -6,13 +6,11 @@ Call script directly only when processing camera feed on a separate machine (e.g
 
 from pynput.mouse import Controller as MouseController, Button
 from pynput.keyboard import Controller as KeyboardController, Key
-import keyboard
-import pyautogui
+# import pyautogui
 from screeninfo import get_monitors
 from collections import deque
 import asyncio
 import time
-import sys
 import struct
 from config import PARAMS
 
