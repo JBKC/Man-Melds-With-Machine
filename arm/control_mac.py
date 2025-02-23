@@ -124,7 +124,7 @@ def interpolate(start, end, steps=PARAMS['STEPS'], delay=PARAMS['DELAY']):
 async def process_data(data_queue, cur):
     """Process data and perform cursor actions"""
 
-    global last_click, scroll_anchor, zoom_anchor, zoom_mode, drag_mode, voice_mode
+    global last_click, scroll_anchor, drag_mode, voice_mode
 
     while True:
 
@@ -145,7 +145,7 @@ async def process_data(data_queue, cur):
                     print("SCROLL MODE")
 
                     # exit if currently in drag mode
-                    if drag_mode == True:
+                    if drag_mode:
                         mouse.release(Button.left)
                         drag_mode = False
 
@@ -195,13 +195,12 @@ async def process_data(data_queue, cur):
 
                     else:
                         # if already in drag mode, start moving the cursor
-                        print(loc)
-                        cur = map_to_screen(loc)
-                        print(cur)
-                        mouse.position = (cur[0], cur[1])
+                        tar = map_to_screen(loc)
+                        cur = velocity_scale(cur, tar)
 
-                        # tar = map_to_screen(loc)
-                        # cur = velocity_scale(cur, tar)
+                        # cur = map_to_screen(loc)
+                        # mouse.position = (cur[0], cur[1])
+
 
                 # default mode - cursor movement mode
                 else:
@@ -315,7 +314,7 @@ async def main(data_queue=None):
 
     print("Listening for data from Hand Tracking script...")
 
-    # set initial cur_x, cur_y
+    # set initial cur_x, cur_y (current location of cursor)
     cur = [0,0]
 
     # process received data

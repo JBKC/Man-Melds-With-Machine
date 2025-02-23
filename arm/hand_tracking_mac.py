@@ -34,8 +34,8 @@ executor = ThreadPoolExecutor()
 
 # differentiate between click and drag modes
 clicking = False
-first_click = 0
 drag_threshold = 0.15           # duration for click to be held in order to qualify as a drag
+drag_cooldown = 1.0             # ensure drag isn't exited abruptly
 
 def dist(lm1, lm2, w, h):
     """Calculate Euclidian distance between 2 landmarks"""
