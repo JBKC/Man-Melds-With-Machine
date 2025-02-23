@@ -28,7 +28,7 @@ y_buffer = deque(maxlen=buffer_size)
 
 # initialise mouse clicks / position
 last_click = 0
-cooldown = 0.5          # seconds
+cooldown = 0.3          # seconds
 scroll_anchor = None
 drag_mode = False
 voice_mode = False
@@ -132,7 +132,7 @@ async def process_data(data_queue, cur):
         data = await data_queue.get()
         # remove newline
         data = data[:-1]
-        # print(data)
+        print(data)
 
         # Read movement packets
         if len(data) == 5:  # Movement and scroll packets: 1 char + 2 unsigned integers
@@ -247,19 +247,16 @@ async def process_data(data_queue, cur):
                     pass
 
             if command == b'C':  # Click command
+
                 current_time = time.time()
                 if current_time - last_click > cooldown:
-                    print(current_time - last_click)
-                    print(cooldown)
-                    # pyautogui.click(clicks=1)
                     mouse.press(Button.left)
-                    # mouse.click(Button.left)
                     mouse.release(Button.left)
-                    print("CLICK")
+                    # print("CLICK")
                     last_click = current_time
                 else:
-                    # mouse.release(Button.left)
-                    print("Double click blocked")
+                    mouse.release(Button.left)
+                    # print("Double click blocked")
 
             elif command == b'E':  # Exit command
                 raise StopException()

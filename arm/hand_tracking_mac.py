@@ -32,12 +32,10 @@ cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # low latency
 
 executor = ThreadPoolExecutor()
 
-## failsafe for drag mode
-# if mediapipe drops / glitches, it can exit drag abruptly, and this can be jarring
-# it can often mistake drag for other gestures where fingers are closed
-# therefore need a cooldown on the drag gesture to make sure it has been exited properly before performing a new action
-last_drag = 0
-cooldown = 1.0          # seconds
+# differentiate between click and drag modes
+clicking = False
+first_click = 0
+drag_threshold = 0.15           # duration for click to be held in order to qualify as a drag
 
 def dist(lm1, lm2, w, h):
     """Calculate Euclidian distance between 2 landmarks"""
@@ -67,7 +65,7 @@ async def process_frame(frame_queue, landmark_queue):
         # Calculate FPS every second
         if elapsed_time > 1.0:
             fps = frame_count / elapsed_time
-            # print(f"FPS: {fps:.2f}")
+            print(f"FPS: {fps:.2f}")
             frame_count = 0  # Reset frame count
             start_time = time.time()  # Reset start time
 
@@ -86,7 +84,7 @@ async def process_frame(frame_queue, landmark_queue):
 
 async def send_data(landmark_queue, data_queue):
 
-    global last_drag
+    global clicking, first_click
 
     while True:
         results = await landmark_queue.get()  # retrieve landmarks from Asyncio queue
@@ -138,84 +136,25 @@ async def send_data(landmark_queue, data_queue):
 
                     current_time = time.time()
 
-                    # if perceived to be a scroll BUT are currently dragging - very likely to be a 'misread' drag
-                    if current_time - last_drag > cooldown:
-                        last_drag = current_time
-                        loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
-                        # normalise coords and flip axes
-                        x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
-                        # scale floats to integers for efficient sending
-                        x_loc = int(x_loc * 1000)
-                        y_loc = int(y_loc * 1000)
+                    # reference for scroll movement = tip of index finger
+                    scroll_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']]
+                    # reference for scroll anchor (reference point moves with hand so everything is relative)
+                    anchor_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_J']]
 
-                        # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
-                        data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
-                        await data_queue.put(data)
-                        # print(data)
+                    # normalise coord and flip axis
+                    scroll_loc = 1.0 - scroll_loc.y
+                    anchor_loc = 1.0 - anchor_loc.y
+                    # scale float to integer for efficient sending
+                    scroll_loc = int(scroll_loc * 1000)
+                    anchor_loc = int(anchor_loc * 1000)
 
-
-                    else:
-                        # if there wasn't a drag recently, it's a scroll
-
-                        # reference for scroll movement = tip of index finger
-                        scroll_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']]
-                        # reference for scroll anchor (reference point moves with hand so everything is relative)
-                        anchor_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_J']]
-
-                        # normalise coord and flip axis
-                        scroll_loc = 1.0 - scroll_loc.y
-                        anchor_loc = 1.0 - anchor_loc.y
-                        # scale float to integer for efficient sending
-                        scroll_loc = int(scroll_loc * 1000)
-                        anchor_loc = int(anchor_loc * 1000)
-
-                        # binary encode the data for sending with no padding
-                        # 6 bytes = 1 char (S for scrolling) + 2 int (scroll and move y-locations) + newline
-                        data = struct.pack('=c2H', b'S', scroll_loc, anchor_loc) + b'\n'
-                        await data_queue.put(data)
-                        # print(data)
-
-                ### CASE 3: drag mode - all fingers closed into fist (replaces exit code)
-                elif (
-                        FIST_SIZE >
-                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                             hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
-                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        FIST_SIZE >
-                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                             hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
-                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        FIST_SIZE >
-                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                             hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
-                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        FIST_SIZE >
-                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                             hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
-                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        # final condition to ensure fist is achieved - thumb doubled back on itself along x-axis
-                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].x -
-                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']].x < 0
-                ):
-
-                    # reset drag timer
-                    current_time = time.time()
-                    last_drag = current_time
-
-                    # reference point for hand movement - thumb_tip easier to see when closed fist
-                    loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
-                    # normalise coords and flip axes
-                    x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
-                    # scale floats to integers for efficient sending
-                    x_loc = int(x_loc * 1000)
-                    y_loc = int(y_loc * 1000)
-
-                    # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
-                    data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
+                    # binary encode the data for sending with no padding
+                    # 6 bytes = 1 char (S for scrolling) + 2 int (scroll and move y-locations) + newline
+                    data = struct.pack('=c2H', b'S', scroll_loc, anchor_loc) + b'\n'
                     await data_queue.put(data)
                     # print(data)
 
-                ### CASE 4: speech mode = devil horns (middle and ring fingers closed)
+                ### CASE 2: speech mode = devil horns (middle and ring fingers closed)
                 elif (
                         FIST_SIZE <
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
@@ -238,66 +177,13 @@ async def send_data(landmark_queue, data_queue):
                     # 2 bytes = 1 char (V for voice) + newline
                     await data_queue.put(b'V\n')
 
-                ### CASE 5: zoom mode = 2 hands in view (not currently functional)
-                elif num_hands == 2:
 
-                    # temporary dictionary to store landmarks
-                    hand_landmarks_dict = {}
+                ### CASE 3: cursor mode = open palm
 
-                    # Collect landmarks in the loop
-                    for hand_landmarks, hand_info in zip(results.multi_hand_landmarks, results.multi_handedness):
-                        hand_label = hand_info.classification[0].label[0]
-                        hand_landmarks_dict[hand_label] = hand_landmarks
+                ## CASE 3.0 -> click detected (click = touch tips of thumb and index finger)
+                ## CASE 3.1 -> drag = click + hold (pinch)
 
-                    # Process only if both hands are detected
-                    if 'R' in hand_landmarks_dict and 'L' in hand_landmarks_dict:
-                        right_lms = hand_landmarks_dict['R']
-                        left_lms = hand_landmarks_dict['L']
-
-                        right_loc = right_lms.landmark[HAND_LANDMARKS['MOVE_ID']]
-                        left_loc = left_lms.landmark[HAND_LANDMARKS['MOVE_ID']]
-
-                        # print(f"Right Loc - x: {right_loc.x}, y: {right_loc.y}")
-                        # print(f"Left Loc - x: {left_loc.x}, y: {left_loc.y}")
-
-                        # invert + scale
-                        x_left = int(left_loc.x * 1000)
-                        x_right = int(right_loc.x * 1000)
-                        y_left = int(left_loc.y * 1000)
-                        y_right = int(right_loc.y * 1000)
-
-                        # Euclidian distance between points
-                        distance = int(((x_left - x_right) ** 2 + (y_left - y_right) ** 2) ** 0.5)
-                        # print(distance)
-
-                        # 4 bytes = 1 char (Z for zoom) + 1 int (distance) + newline
-                        data = struct.pack('=cH', b'Z', distance) + b'\n'
-                        await data_queue.put(data)
-
-                ### CASE 2: cursor mode = open palm
                 else:
-                    ## CASE 2.0 -> no commands: send realtime hand position
-                    # (this is the primary way to exit a drag)
-
-                    # reference point for hand movement
-                    loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
-                    # normalise coords and flip axes
-                    x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
-                    # scale floats to integers for efficient sending
-                    x_loc = int(x_loc * 1000)
-                    y_loc = int(y_loc * 1000)
-
-                    # print(f"{hand_label}: x={x_loc}, y={y_loc}")
-
-                    # binary encode the data for sending with no padding (6 bytes = 1 char + 2 ints + newline)
-                    data = struct.pack('=c2H', hand_label.encode(), x_loc, y_loc) + b'\n'
-                    await data_queue.put(data)
-
-                    # print(data)
-
-                    ## CASE 2.1 -> click detected (click = touch tips of thumb and index finger)
-                    ## if you click and hold (pinch), it becomes a drag
-
                     # set distance threshold to register click
                     THRESH = dist(
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
@@ -327,27 +213,45 @@ async def send_data(landmark_queue, data_queue):
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
 
-                        #
-                        current_time = time.time()
-
-                        if current_time - last_drag > cooldown:
-                            last_drag = current_time
-                            loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
-                            # normalise coords and flip axes
-                            x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
-                            # scale floats to integers for efficient sending
-                            x_loc = int(x_loc * 1000)
-                            y_loc = int(y_loc * 1000)
-
-                            # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
-                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
-                            await data_queue.put(data)
-
-                        else:
+                        if clicking == False:
+                            # first click detected - send data to queue
                             await data_queue.put(b'C\n')
+                            # set time of this click
+                            first_click = time.time()
+                            clicking = True
+
+                        elif clicking == True:
+                            # already clicked recently
+                            current_time = time.time()
+                            if current_time - first_click < drag_threshold:
+                                # if click was below time threshold, still send data (will be rejected by control_mac.py due to cooldown)
+                                await data_queue.put(b'C\n')
+                            else:
+                                # otherwise click has been sustained a while - go into drag mode
+                                # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
+                                data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
+
+                                await data_queue.put(data)
+
+                    ## CASE 3.2 -> no click command: send realtime hand position ("default" mode)
+                    else:
+                        # reference point for hand movement
+                        loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
+                        # normalise coords and flip axes
+                        x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
+                        # scale floats to integers for efficient sending
+                        x_loc = int(x_loc * 1000)
+                        y_loc = int(y_loc * 1000)
+
+                        # print(f"{hand_label}: x={x_loc}, y={y_loc}")
+
+                        # binary encode the data for sending with no padding (6 bytes = 1 char + 2 ints + newline)
+                        data = struct.pack('=c2H', hand_label.encode(), x_loc, y_loc) + b'\n'
+                        await data_queue.put(data)
 
 
-                    ## CASE 2.2 -> exit (= close fist)
+
+                    ## CASE 3.3 -> exit (= close fist)
                     # if (
                     #         HAND_SIZE / 2 >
                     #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
@@ -372,7 +276,7 @@ async def send_data(landmark_queue, data_queue):
                     #     else:
                     #         await data_queue.put(b'E\n')
 
-                    ## CASE 2.3 -> change tab forward
+                    ## CASE 3.4 -> change tab forward
                     tabf = dist(
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
                         hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
@@ -396,27 +300,10 @@ async def send_data(landmark_queue, data_queue):
                                  hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
-                        # drag failsafe
-                        current_time = time.time()
 
-                        if current_time - last_drag > cooldown:
-                            last_drag = current_time
-                            loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
-                            # normalise coords and flip axes
-                            x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
-                            # scale floats to integers for efficient sending
-                            x_loc = int(x_loc * 1000)
-                            y_loc = int(y_loc * 1000)
+                        await data_queue.put(b'F\n')
 
-                            # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
-                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
-                            await data_queue.put(data)
-
-                        else:
-                            # send 1 byte
-                            await data_queue.put(b'F\n')
-
-                    ## CASE 2.4 -> change tab backward
+                    ## CASE 3.5 -> change tab backward
                     tabb = dist(
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
                         hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
@@ -440,27 +327,10 @@ async def send_data(landmark_queue, data_queue):
                                  hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
-                        # drag failsafe
-                        current_time = time.time()
 
-                        if current_time - last_drag > cooldown:
-                            last_drag = current_time
-                            loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
-                            # normalise coords and flip axes
-                            x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
-                            # scale floats to integers for efficient sending
-                            x_loc = int(x_loc * 1000)
-                            y_loc = int(y_loc * 1000)
+                        await data_queue.put(b'B\n')
 
-                            # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
-                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
-                            await data_queue.put(data)
-
-
-                        else:
-                            await data_queue.put(b'B\n')
-
-                    ## CASE 2.5 -> mission control
+                    ## CASE 3.6 -> mission control
                     tabm = dist(
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
                         hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
@@ -484,24 +354,8 @@ async def send_data(landmark_queue, data_queue):
                             #      hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                             #      FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
-                        # drag failsafe
-                        current_time = time.time()
 
-                        if current_time - last_drag > cooldown:
-                            last_drag = current_time
-                            loc = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']]
-                            # normalise coords and flip axes
-                            x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
-                            # scale floats to integers for efficient sending
-                            x_loc = int(x_loc * 1000)
-                            y_loc = int(y_loc * 1000)
-
-                            # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
-                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
-                            await data_queue.put(data)
-
-                        else:
-                            await data_queue.put(b'M\n')
+                        await data_queue.put(b'M\n')
 
 
 async def main(data_queue=None):
