@@ -58,6 +58,7 @@ def map_to_screen(loc):
             return int(((value - 200) / 600) * screen_size)
     return [int(zoom(loc[0], SCREEN_WIDTH)), int(zoom(loc[1], SCREEN_HEIGHT))]
 
+
 async def broadcast_to_browser(event_type, data):
     """Broadcast event data to all connected browser clients."""
     if browser_clients:
@@ -80,6 +81,22 @@ async def process_data(data_queue, cur):
 
     first_movement = True  # track if this is the first movement packet
     post_calibration = False  # track if this is the first packet post-calibration
+
+    def damp(x, y):
+        """Apply damping to small movements to reduce jitter"""
+
+        distance = (x ** 2 + y ** 2) ** 0.5
+
+        damping = max(1, PARAMS['SENSITIVITY'] / max(distance, 1e-6))
+        damping *= PARAMS['DAMP'] if damping > 1 else 1
+
+        if distance < PARAMS['SENSITIVITY']:
+            # drastically reduce GAIN for small movements
+            scaling_factor = 1 + (distance * damping)
+        else:
+            scaling_factor = 1 + (distance / PARAMS['GAIN']) * damping
+
+        return scaling_factor
 
     while True:
         data = await data_queue.get()
@@ -127,22 +144,30 @@ async def process_data(data_queue, cur):
                             # if first movement packet received, centre on middle of screen
                             cur = [SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2]  # Center of the screen
                             first_movement = False
-                            print(f"Initial cursor position centered at: {cur}")
+                            print(f"Reset at: {cur}")
                             continue  # Skip processing this packet to avoid snapping
 
                         if post_calibration:
                             # if just finished recalibrating, move cursor to location of hand on screen
                             cur = loc
                             post_calibration = False
-                            print(f"Initial cursor position centered at: {cur}")
+                            print(f"Reset at: {cur}")
                             continue  # Skip processing this packet to avoid snapping
 
+                        ### execute camera movement
                         tar = map_to_screen(loc)
                         x_delta = (tar[0] - cur[0]) * GAMING_PARAMS['SENSITIVITY']
                         y_delta = (tar[1] - cur[1]) * GAMING_PARAMS['SENSITIVITY']
                         print(x_delta, y_delta)
+
+                        scaling_factor = damp(x=x_delta,y=y_delta)
+
+                        x_delta /= scaling_factor
+                        y_delta /= scaling_factor
+
                         cur = tar
                         await broadcast_to_browser("mousemove", {"movementX": x_delta, "movementY": y_delta})
+
 
                 except Exception as e:
                     print(f"Error processing movement data: {e}")

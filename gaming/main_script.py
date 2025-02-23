@@ -6,6 +6,7 @@ import asyncio
 import tracking_gaming as hand_tracking
 import control_gaming_v1 as control_mac
 
+
 async def run_scripts():
     """Simultaneously call 2 scripts"""
 
