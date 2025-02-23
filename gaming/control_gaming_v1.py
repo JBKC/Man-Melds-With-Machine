@@ -5,7 +5,6 @@ Focusses on FPS controls
 
 from pynput.mouse import Controller as MouseController, Button
 from pynput.keyboard import Controller as KeyboardController, Key
-import pyautogui
 from screeninfo import get_monitors
 from collections import deque
 import asyncio
@@ -14,6 +13,8 @@ import struct
 import json
 import websockets
 from websockets.server import serve
+
+from arm.config import GAMING_PARAMS
 from config import PARAMS
 
 # Initialize
@@ -77,15 +78,16 @@ async def process_data(data_queue, cur):
     """Process data and perform cursor actions, sending movement/clicks to browser."""
     global active, last_click, scroll_anchor, drag_mode
 
-    first_movement = True  # Track if this is the first movement packet
+    first_movement = True  # track if this is the first movement packet
+    post_calibration = False  # track if this is the first packet post-calibration
 
     while True:
         data = await data_queue.get()
         data = data[:-1]  # Remove newline
         # print(data)
 
-        # use voice gesture (devil horns) to trigger motion (calibration in the centre)
-        if not active and data == b'V':
+        # use middle finger tap gesture to trigger motion (calibration in the centre)
+        if not active and data == b'B':
             print("ACTIVATED")
             active = True
 
@@ -120,8 +122,8 @@ async def process_data(data_queue, cur):
                             _, x_loc, y_loc = struct.unpack('=c2H', data)
                             loc = [int(x_loc), 1000 - int(y_loc)]
                             tar = map_to_screen(loc)
-                            x_delta = (tar[0] - cur[0]) * 3
-                            y_delta = (tar[1] - cur[1]) * 3
+                            x_delta = (tar[0] - cur[0]) * GAMING_PARAMS['SENSITIVITY']
+                            y_delta = (tar[1] - cur[1]) * GAMING_PARAMS['SENSITIVITY']
                             cur = tar
                             await broadcast_to_browser("mousemove", {"movementX": x_delta, "movementY": y_delta})
 
@@ -135,10 +137,17 @@ async def process_data(data_queue, cur):
                         _, x_loc, y_loc = struct.unpack('=c2H', data)
                         loc = [int(x_loc), 1000 - int(y_loc)]
 
-                        # Center the cursor on the first movement packet
                         if first_movement:
+                            # if first movement packet received, centre on middle of screen
                             cur = [SCREEN_WIDTH / 2, SCREEN_HEIGHT / 2]  # Center of the screen
                             first_movement = False
+                            print(f"Initial cursor position centered at: {cur}")
+                            continue  # Skip processing this packet to avoid snapping
+
+                        if post_calibration:
+                            # if just finished recalibrating, move cursor to location of hand on screen
+                            cur = loc
+                            post_calibration = False
                             print(f"Initial cursor position centered at: {cur}")
                             continue  # Skip processing this packet to avoid snapping
 
@@ -156,8 +165,9 @@ async def process_data(data_queue, cur):
                 command = data
                 current_time = time.time()
 
-                if command == b'V':     # voice mode now becomes CALIBRATION (move hand without cursor moving)
+                if command == b'B':     # middle finger tab now becomes CALIBRATION (move hand without cursor moving)
                     print("CALIBRATING")
+                    post_calibration = True
 
                     if drag_mode:
                         mouse.release(Button.left)
@@ -172,15 +182,6 @@ async def process_data(data_queue, cur):
                         last_click = current_time
                     else:
                         print("Double click blocked")
-
-                elif command == b'E':
-                    pass
-
-                elif command == b'F':
-                    pass
-
-                elif command == b'B':
-                    pass
 
                 elif command == b'M':
                     # use mission control command (thumb and pinky tap) to exit code
