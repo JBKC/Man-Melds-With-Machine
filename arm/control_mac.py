@@ -30,40 +30,8 @@ y_buffer = deque(maxlen=buffer_size)
 last_click = 0
 cooldown = 0.5          # seconds
 scroll_anchor = None
-zoom_anchor = None
-zoom_mode = False
 drag_mode = False
 voice_mode = False
-
-# from Quartz.CoreGraphics import (
-#     CGEventCreateKeyboardEvent,
-#     CGEventCreateScrollWheelEvent,
-#     CGEventPost,
-#     kCGEventScrollWheel,
-#     kCGSessionEventTap,
-#     kCGEventFlagMaskCommand,
-#     kCGEventKeyDown,
-#     kCGEventKeyUp
-# )
-#
-# def press_cmd():
-#     """Press down the Command key."""
-#     cmd_keycode = 0x37  # 0x37 is the keycode for Cmd (Command key)
-#     event = CGEventCreateKeyboardEvent(None, cmd_keycode, True)  # True for key press
-#     CGEventPost(kCGSessionEventTap, event)
-#
-# def release_cmd():
-#     """Release the Command key."""
-#     cmd_keycode = 0x37  # 0x37 is the keycode for Cmd
-#     event = CGEventCreateKeyboardEvent(None, cmd_keycode, False)  # False for key release
-#     CGEventPost(kCGSessionEventTap, event)
-#
-# def scroll_event(dy):
-#     """Send a smooth scroll event with the Command key held down."""
-#     scroll_event = CGEventCreateScrollWheelEvent(None, 0, 1, dy)  # Scroll on 1 axis, dy is the scroll amount
-#     CGEventPost(kCGSessionEventTap, scroll_event)  # Post the scroll event
-
-
 
 ########
 class StopException(Exception):
@@ -176,17 +144,9 @@ async def process_data(data_queue, cur):
                 if data.startswith(b'S'):
                     print("SCROLL MODE")
 
-                    zoom_mode = False
-                    zoom_anchor = None
-                    if zoom_mode == True:
-                        release_cmd()  # Release Cmd
-                        zoom_mode = False
-                    if drag_mode == True:
-                        mouse.release(Button.left)
-                        drag_mode = False
+                    # if currently in voice mode, exit by entering the text
                     if voice_mode == True:
                         pykeyboard.release(Key.alt)
-                        # enter whatever text was input
                         time.sleep(1.0)
                         pykeyboard.press(Key.enter)
                         pykeyboard.release(Key.enter)
@@ -211,13 +171,9 @@ async def process_data(data_queue, cur):
                     print("DRAG MODE")
 
                     scroll_anchor = None
-                    zoom_anchor = None
-                    if zoom_mode == True:
-                        release_cmd()  # Release Cmd
-                        zoom_mode = False
+                    # enter whatever text was input
                     if voice_mode == True:
                         pykeyboard.release(Key.alt)
-                        # enter whatever text was input
                         time.sleep(1.0)
                         pykeyboard.press(Key.enter)
                         pykeyboard.release(Key.enter)
@@ -233,17 +189,13 @@ async def process_data(data_queue, cur):
                         drag_mode = True
 
                     else:
+                        # if already in drag mode, start moving the cursor
                         cur = map_to_screen(loc)
                         mouse.position = (cur[0], cur[1])
 
-                # cursor movement mode (default)
+                # default mode - cursor movement mode
                 else:
-
                     scroll_anchor = None
-                    zoom_anchor = None
-                    if zoom_mode == True:
-                        release_cmd()  # Release Cmd
-                        zoom_mode = False
                     if drag_mode == True:
                         mouse.release(Button.left)
                         drag_mode = False
@@ -263,12 +215,8 @@ async def process_data(data_queue, cur):
 
                     # Convert to screen coordinates
                     tar = map_to_screen(loc)
-
                     # Velocity scaling and move cursor
-                    # velocity_start = time.time()  # Start timing velocity scaling
                     cur = velocity_scale(cur, tar)
-                    # velocity_end = time.time()  # End timing velocity scaling
-                    # print(f"Time for velocity scaling and cursor movement: {velocity_end - velocity_start:.6f} seconds")
 
                     ## no velocity scaling option
                     # cur = map_to_screen(loc)
@@ -279,61 +227,13 @@ async def process_data(data_queue, cur):
             except Exception as e:
                 print(f"Error processing movement data: {e}")
 
-        # zoom packets
-        ## NOTE - zoom functionality not yet working - placeholder
-        elif len(data) == 3:
-
-            try:
-                # zoom mode detected
-                if data.startswith(b'Z'):
-                    print("ZOOM MODE")
-
-                    if drag_mode == True:
-                        mouse.release(Button.left)
-                        drag_mode = False
-                    scroll_anchor = None
-                    if voice_mode == True:
-                        pykeyboard.release(Key.alt)
-                        # enter whatever text was input
-                        time.sleep(1.0)
-                        pykeyboard.press(Key.enter)
-                        pykeyboard.release(Key.enter)
-                        voice_mode = False
-
-                    # Unpack binary data
-                    _, distance = struct.unpack('=cH', data)
-                    # print(distance)
-
-                    # set zoom anchor (initial distance)
-                    if zoom_anchor is None:
-                        zoom_anchor = distance
-
-                    if not zoom_mode:
-                        # start zoom - keep cmd pressed down
-                        press_cmd()  # Press down Cmd
-                        zoom_mode = True
-                    else:
-                        # Update position during dragging
-                        zoom = int((zoom_anchor - distance) / PARAMS['SCROLL'])
-                        scroll_event(zoom)  # Send smooth scroll event
-                        # mouse.scroll(dx=0, dy=zoom)
-                        print(zoom)
-
-            except Exception as e:
-                print(f"Error processing zoom data: {e}")
-
         # Read command packets
         elif len(data) == 1:  # Command packet: 1 byte
             command = data
 
             if command == b'V':      # voice command
                 print("VOICE MODE")
-
                 scroll_anchor = None
-                zoom_anchor = None
-                if zoom_mode == True:
-                    release_cmd()  # Release Cmd
-                    zoom_mode = False
                 if drag_mode == True:
                     mouse.release(Button.left)
                     drag_mode = False
@@ -342,24 +242,28 @@ async def process_data(data_queue, cur):
                     # activate voice mode
                     pykeyboard.press(Key.alt)
                     voice_mode = True
-
                 else:
-                    # if voice mode already activated with gesture active, do nothing (user is speaking)
+                    # if voice mode already activated, do nothing (user is speaking)
                     pass
 
             if command == b'C':  # Click command
                 current_time = time.time()
-                print(current_time - last_click)
-
                 if current_time - last_click > cooldown:
+                    print(current_time - last_click)
+                    print(cooldown)
+                    # pyautogui.click(clicks=1)
                     mouse.press(Button.left)
+                    # mouse.click(Button.left)
                     mouse.release(Button.left)
                     print("CLICK")
                     last_click = current_time
                 else:
+                    # mouse.release(Button.left)
                     print("Double click blocked")
+
             elif command == b'E':  # Exit command
                 raise StopException()
+
             if command == b'F':  # next tab
                 current_time = time.time()
                 if current_time - last_click > cooldown:
@@ -370,6 +274,7 @@ async def process_data(data_queue, cur):
                     last_click = current_time
                 else:
                     print("Double tab forward blocked")
+
             if command == b'B':  # previous tab
                 current_time = time.time()
                 if current_time - last_click > cooldown:
@@ -381,6 +286,7 @@ async def process_data(data_queue, cur):
                     last_click = current_time
                 else:
                     print("Double tab back blocked")
+
             if command == b'M':  # mission control
                 current_time = time.time()
                 if current_time - last_click > cooldown:

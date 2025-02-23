@@ -18,7 +18,6 @@ mp_drawing = mp.solutions.drawing_utils
 hands = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=1,
-    # max_num_hands=2,              # increase to 2 when zoom functionality working
     min_detection_confidence=0.5,
     min_tracking_confidence=0.5,
 )
@@ -30,11 +29,6 @@ cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
 cap.set(cv2.CAP_PROP_FPS, FPS)
 cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)  # low latency
-
-### optional: open camera in fullscreen
-# window_name = "Hand Tracking"
-# cv2.namedWindow(window_name, cv2.WND_PROP_FULLSCREEN)
-# cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 executor = ThreadPoolExecutor()
 
@@ -73,7 +67,7 @@ async def process_frame(frame_queue, landmark_queue):
         # Calculate FPS every second
         if elapsed_time > 1.0:
             fps = frame_count / elapsed_time
-            print(f"FPS: {fps:.2f}")
+            # print(f"FPS: {fps:.2f}")
             frame_count = 0  # Reset frame count
             start_time = time.time()  # Reset start time
 
@@ -109,7 +103,7 @@ async def send_data(landmark_queue, data_queue):
                 # get and mirror hand labels (due to mirrored screen)
                 hand_label = 'R' if hand_info.classification[0].label == "Left" else 'L'
 
-                # calculate hand size (used for some commands)
+                # calculate hand size (used for tap commands)
                 HAND_SIZE = dist(
                     hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                     hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']],
@@ -302,6 +296,8 @@ async def send_data(landmark_queue, data_queue):
                     # print(data)
 
                     ## CASE 2.1 -> click detected (click = touch tips of thumb and index finger)
+                    ## if you click and hold (pinch), it becomes a drag
+
                     # set distance threshold to register click
                     THRESH = dist(
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
@@ -331,7 +327,7 @@ async def send_data(landmark_queue, data_queue):
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
 
-                        # drag failsafe
+                        #
                         current_time = time.time()
 
                         if current_time - last_drag > cooldown:
