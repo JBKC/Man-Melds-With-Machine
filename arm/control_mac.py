@@ -164,7 +164,7 @@ async def process_data(data_queue, cur):
         data = await data_queue.get()
         # remove newline
         data = data[:-1]
-        print(data)
+        # print(data)
 
         # Read movement packets
         if len(data) == 5:  # Movement and scroll packets: 1 char + 2 unsigned integers
@@ -349,9 +349,11 @@ async def process_data(data_queue, cur):
 
             if command == b'C':  # Click command
                 current_time = time.time()
+                print(current_time - last_click)
 
                 if current_time - last_click > cooldown:
                     mouse.press(Button.left)
+                    mouse.release(Button.left)
                     print("CLICK")
                     last_click = current_time
                 else:
