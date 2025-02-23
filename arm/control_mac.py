@@ -28,7 +28,7 @@ y_buffer = deque(maxlen=buffer_size)
 
 # initialise mouse clicks / position
 last_click = 0
-cooldown = 0.3          # seconds
+cooldown = 0.5          # seconds
 scroll_anchor = None
 drag_mode = False
 voice_mode = False
@@ -195,8 +195,13 @@ async def process_data(data_queue, cur):
 
                     else:
                         # if already in drag mode, start moving the cursor
+                        print(loc)
                         cur = map_to_screen(loc)
+                        print(cur)
                         mouse.position = (cur[0], cur[1])
+
+                        # tar = map_to_screen(loc)
+                        # cur = velocity_scale(cur, tar)
 
                 # default mode - cursor movement mode
                 else:
@@ -225,7 +230,7 @@ async def process_data(data_queue, cur):
                     # Velocity scaling and move cursor
                     cur = velocity_scale(cur, tar)
 
-                    ## no velocity scaling option
+                    ## no velocity scaling option (raw hand coordS)
                     # cur = map_to_screen(loc)
                     # mouse.position = (cur[0], cur[1])
 

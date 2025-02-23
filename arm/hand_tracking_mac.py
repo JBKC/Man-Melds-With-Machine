@@ -183,11 +183,21 @@ async def send_data(landmark_queue, data_queue):
 
 
                 ### CASE 3: cursor mode = open palm
-
-                ## CASE 3.0 -> click detected (click = touch tips of thumb and index finger)
-                ## CASE 3.1 -> drag = click + hold (pinch)
-
                 else:
+
+                    # establish live hand location
+                    loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
+                    # normalise coords and flip axes
+                    x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
+                    # scale floats to integers for efficient sending
+                    x_loc = int(x_loc * 1000)
+                    y_loc = int(y_loc * 1000)
+
+                    # print(f"{hand_label}: x={x_loc}, y={y_loc}")
+
+                    ## CASE 3.0 -> click detected (click = touch tips of thumb and index finger)
+                    ## CASE 3.1 -> drag = click + hold (pinch)
+
                     # set distance threshold to register click
                     THRESH = dist(
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
@@ -232,6 +242,7 @@ async def send_data(landmark_queue, data_queue):
                                 await data_queue.put(b'C\n')
                             else:
                                 # otherwise click has been sustained a while - go into drag mode
+
                                 # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
                                 data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
                                 await data_queue.put(data)
@@ -242,20 +253,9 @@ async def send_data(landmark_queue, data_queue):
                         # exit drag mode
                         clicking = False
 
-                        # reference point for hand movement
-                        loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
-                        # normalise coords and flip axes
-                        x_loc, y_loc = 1.0 - loc.x, 1.0 - loc.y
-                        # scale floats to integers for efficient sending
-                        x_loc = int(x_loc * 1000)
-                        y_loc = int(y_loc * 1000)
-
-                        # print(f"{hand_label}: x={x_loc}, y={y_loc}")
-
                         # binary encode the data for sending with no padding (6 bytes = 1 char + 2 ints + newline)
                         data = struct.pack('=c2H', hand_label.encode(), x_loc, y_loc) + b'\n'
                         await data_queue.put(data)
-
 
 
                     ## CASE 3.3 -> exit (= close fist)
