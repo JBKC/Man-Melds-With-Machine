@@ -267,7 +267,6 @@ async def process_data(data_queue, cur):
                     print("CLICK")
                     last_click = current_time
                 else:
-                    mouse.release(Button.left)
                     print("Double click blocked")
 
             elif command == b'E':  # Exit command
