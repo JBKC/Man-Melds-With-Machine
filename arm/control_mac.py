@@ -164,7 +164,7 @@ async def process_data(data_queue, cur):
         data = await data_queue.get()
         # remove newline
         data = data[:-1]
-        # print(data)
+        print(data)
 
         # Read movement packets
         if len(data) == 5:  # Movement and scroll packets: 1 char + 2 unsigned integers

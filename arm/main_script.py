@@ -4,9 +4,9 @@ Script for running both the camera tracking and machine controller scripts async
 
 import asyncio
 import hand_tracking_mac as hand_tracking
-# import control_mac
+import control_mac
 # import control_all_monitors as control_mac
-import control_gaming_v1 as control_mac
+# import control_gaming_v1 as control_mac
 
 async def run_scripts():
     """Simultaneously call 2 scripts"""
@@ -14,6 +14,7 @@ async def run_scripts():
     # Create shared queue for async communication:
     # stores bytes of data that gets passed from hand_tracking to control_mac
     data_queue = asyncio.Queue()
+
 
     await asyncio.gather(
         hand_tracking.main(data_queue),

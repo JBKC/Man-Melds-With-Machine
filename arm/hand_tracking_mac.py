@@ -24,7 +24,7 @@ hands = mp_hands.Hands(
 )
 
 # initialize camera
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
@@ -73,7 +73,7 @@ async def process_frame(frame_queue, landmark_queue):
         # Calculate FPS every second
         if elapsed_time > 1.0:
             fps = frame_count / elapsed_time
-            print(f"FPS: {fps:.2f}")
+            # print(f"FPS: {fps:.2f}")
             frame_count = 0  # Reset frame count
             start_time = time.time()  # Reset start time
 
@@ -533,9 +533,17 @@ async def main(data_queue=None):
             # attach frame to queue for processing
             await frame_queue.put(frame)
 
+            # Process frame with Mediapipe
+            results = hands.process(frame)
+
+            # Draw landmarks if detected
+            if results.multi_hand_landmarks:
+                for hand_landmarks in results.multi_hand_landmarks:
+                    mp_drawing.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+
             ### optional: display the frame
-            # mirror = cv2.flip(frame, 1)
-            # cv2.imshow("Hand Tracking", mirror)
+            mirror = cv2.flip(frame, 1)
+            cv2.imshow("Hand Tracking", mirror)
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
