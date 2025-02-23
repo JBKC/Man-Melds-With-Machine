@@ -28,8 +28,9 @@ HAND_LANDMARKS = {
 # FRAME_SIZE = {'width': 960, 'height': 540}
 FRAME_SIZE = {'width': 1920, 'height': 1080}
 
+# recommended to change the game's settings rather than this parameter (leads to jitter)
 GAMING_PARAMS = {
-    'SENSITIVITY': 5        # sensitivity of the aiming (right analog sticK)
+    'SENSITIVITY': 1        # sensitivity of the aiming (right analog sticK)
 }
 
 # FPS of virtual camera

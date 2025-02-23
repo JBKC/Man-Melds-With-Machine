@@ -14,7 +14,7 @@ import json
 import websockets
 from websockets.server import serve
 
-from arm.config import GAMING_PARAMS
+from config import GAMING_PARAMS
 from config import PARAMS
 
 # Initialize
@@ -87,7 +87,7 @@ async def process_data(data_queue, cur):
         # print(data)
 
         # use scroll gesture to trigger motion (calibration in the centre)
-        if not active and data == b'S':
+        if not active and data == b'V':
             print("ACTIVATED")
             active = True
 
@@ -138,8 +138,8 @@ async def process_data(data_queue, cur):
                             continue  # Skip processing this packet to avoid snapping
 
                         tar = map_to_screen(loc)
-                        x_delta = (tar[0] - cur[0]) * 3
-                        y_delta = (tar[1] - cur[1]) * 3
+                        x_delta = (tar[0] - cur[0]) * GAMING_PARAMS['SENSITIVITY']
+                        y_delta = (tar[1] - cur[1]) * GAMING_PARAMS['SENSITIVITY']
                         print(x_delta, y_delta)
                         cur = tar
                         await broadcast_to_browser("mousemove", {"movementX": x_delta, "movementY": y_delta})
@@ -151,7 +151,7 @@ async def process_data(data_queue, cur):
                 command = data
                 current_time = time.time()
 
-                if command == b'S':     # scroll CALIBRATION (move hand without cursor moving - like lifting your mouse)
+                if command == b'V':     # scroll CALIBRATION (move hand without cursor moving - like lifting your mouse)
                     print("CALIBRATING")
                     post_calibration = True
 
