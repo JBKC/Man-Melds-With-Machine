@@ -169,6 +169,7 @@ async def process_data(data_queue, cur):
                 # drag mode detected
                 elif data.startswith(b'D'):
                     print("DRAG MODE")
+                    print(drag_mode)
 
                     scroll_anchor = None
                     # enter whatever text was input
@@ -252,11 +253,11 @@ async def process_data(data_queue, cur):
                 if current_time - last_click > cooldown:
                     mouse.press(Button.left)
                     mouse.release(Button.left)
-                    # print("CLICK")
+                    print("CLICK")
                     last_click = current_time
                 else:
                     mouse.release(Button.left)
-                    # print("Double click blocked")
+                    print("Double click blocked")
 
             elif command == b'E':  # Exit command
                 raise StopException()

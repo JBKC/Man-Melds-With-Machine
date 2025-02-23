@@ -65,7 +65,7 @@ async def process_frame(frame_queue, landmark_queue):
         # Calculate FPS every second
         if elapsed_time > 1.0:
             fps = frame_count / elapsed_time
-            print(f"FPS: {fps:.2f}")
+            # print(f"FPS: {fps:.2f}")
             frame_count = 0  # Reset frame count
             start_time = time.time()  # Reset start time
 
@@ -134,7 +134,8 @@ async def send_data(landmark_queue, data_queue):
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']].x > 0
                 ):
 
-                    current_time = time.time()
+                    # exit drag mode
+                    clicking = False
 
                     # reference for scroll movement = tip of index finger
                     scroll_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']]
@@ -173,6 +174,9 @@ async def send_data(landmark_queue, data_queue):
                              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height'])
                 ):
+
+                    # exit drag mode
+                    clicking = False
 
                     # 2 bytes = 1 char (V for voice) + newline
                     await data_queue.put(b'V\n')
@@ -230,11 +234,14 @@ async def send_data(landmark_queue, data_queue):
                                 # otherwise click has been sustained a while - go into drag mode
                                 # 6 bytes = 1 char (D for drag) + 2 int (x,y location of cursor) + newline
                                 data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
-
                                 await data_queue.put(data)
 
                     ## CASE 3.2 -> no click command: send realtime hand position ("default" mode)
                     else:
+
+                        # exit drag mode
+                        clicking = False
+
                         # reference point for hand movement
                         loc = hand_landmarks.landmark[HAND_LANDMARKS['MOVE_ID']]
                         # normalise coords and flip axes
@@ -300,6 +307,8 @@ async def send_data(landmark_queue, data_queue):
                                  hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
+                        # exit drag mode
+                        clicking = False
 
                         await data_queue.put(b'F\n')
 
@@ -327,6 +336,8 @@ async def send_data(landmark_queue, data_queue):
                                  hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
+                        # exit drag mode
+                        clicking = False
 
                         await data_queue.put(b'B\n')
 
@@ -354,6 +365,8 @@ async def send_data(landmark_queue, data_queue):
                             #      hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                             #      FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
+                        # exit drag mode
+                        clicking = False
 
                         await data_queue.put(b'M\n')
 
