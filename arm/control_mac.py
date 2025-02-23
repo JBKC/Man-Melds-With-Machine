@@ -132,7 +132,7 @@ async def process_data(data_queue, cur):
         data = await data_queue.get()
         # remove newline
         data = data[:-1]
-        print(data)
+        # print(data)
 
         # Read movement packets
         if len(data) == 5:  # Movement and scroll packets: 1 char + 2 unsigned integers
@@ -144,8 +144,13 @@ async def process_data(data_queue, cur):
                 if data.startswith(b'S'):
                     print("SCROLL MODE")
 
+                    # exit if currently in drag mode
+                    if drag_mode == True:
+                        mouse.release(Button.left)
+                        drag_mode = False
+
                     # if currently in voice mode, exit by entering the text
-                    if voice_mode == True:
+                    if voice_mode:
                         pykeyboard.release(Key.alt)
                         time.sleep(1.0)
                         pykeyboard.press(Key.enter)
@@ -169,11 +174,10 @@ async def process_data(data_queue, cur):
                 # drag mode detected
                 elif data.startswith(b'D'):
                     print("DRAG MODE")
-                    print(drag_mode)
 
                     scroll_anchor = None
                     # enter whatever text was input
-                    if voice_mode == True:
+                    if voice_mode:
                         pykeyboard.release(Key.alt)
                         time.sleep(1.0)
                         pykeyboard.press(Key.enter)
@@ -197,10 +201,12 @@ async def process_data(data_queue, cur):
                 # default mode - cursor movement mode
                 else:
                     scroll_anchor = None
-                    if drag_mode == True:
+
+                    if drag_mode:
                         mouse.release(Button.left)
                         drag_mode = False
-                    if voice_mode == True:
+
+                    if voice_mode:
                         pykeyboard.release(Key.alt)
                         # enter whatever text was input
                         time.sleep(1.0)
@@ -235,7 +241,7 @@ async def process_data(data_queue, cur):
             if command == b'V':      # voice command
                 print("VOICE MODE")
                 scroll_anchor = None
-                if drag_mode == True:
+                if drag_mode:
                     mouse.release(Button.left)
                     drag_mode = False
 

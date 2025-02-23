@@ -217,14 +217,14 @@ async def send_data(landmark_queue, data_queue):
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
 
-                        if clicking == False:
+                        if not clicking:
                             # first click detected - send data to queue
                             await data_queue.put(b'C\n')
                             # set time of this click
                             first_click = time.time()
                             clicking = True
 
-                        elif clicking == True:
+                        elif clicking:
                             # already clicked recently
                             current_time = time.time()
                             if current_time - first_click < drag_threshold:
