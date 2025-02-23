@@ -37,7 +37,7 @@ clicking = False
 first_click = 0
 last_drag = 0                   # running record of last drag action to ensure continuity
 drag_threshold = 0.15           # duration for click to be held in order to qualify as a drag
-drag_cooldown = 0.5             # ensure drag isn't exited abruptly
+# drag_cooldown = 0.5           # removed for gaming (automatic weapons)
 
 def dist(lm1, lm2, w, h):
     """Calculate Euclidian distance between 2 landmarks"""
@@ -139,22 +139,8 @@ async def send_data(landmark_queue, data_queue):
                     # exit drag mode
                     clicking = False
 
-                    # reference for scroll movement = tip of index finger
-                    scroll_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']]
-                    # reference for scroll anchor (reference point moves with hand so everything is relative)
-                    anchor_loc = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_J']]
-
-                    # normalise coord and flip axis
-                    scroll_loc = 1.0 - scroll_loc.y
-                    anchor_loc = 1.0 - anchor_loc.y
-                    # scale float to integer for efficient sending
-                    scroll_loc = int(scroll_loc * 1000)
-                    anchor_loc = int(anchor_loc * 1000)
-
-                    # binary encode the data for sending with no padding
-                    # 6 bytes = 1 char (S for scrolling) + 2 int (scroll and move y-locations) + newline
-                    data = struct.pack('=c2H', b'S', scroll_loc, anchor_loc) + b'\n'
-                    await data_queue.put(data)
+                    # scrolling is now calibration in gaming mode
+                    await data_queue.put(b'S\n')
                     # print(data)
 
                 ### CASE 2: speech mode = devil horns (middle and ring fingers closed)
@@ -251,20 +237,11 @@ async def send_data(landmark_queue, data_queue):
 
                     ## CASE 3.2 -> no click command: send realtime hand position ("default" mode)
                     else:
-
-                        # first make sure current drag is not exited accidentally
-                        current_time = time.time()
-                        if current_time - last_drag < drag_cooldown:
-                            # still dragging
-                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
-                            await data_queue.put(data)
-
-                        else:
-                            # exit drag mode
-                            clicking = False
-                            # binary encode the data for sending with no padding (6 bytes = 1 char + 2 ints + newline)
-                            data = struct.pack('=c2H', hand_label.encode(), x_loc, y_loc) + b'\n'
-                            await data_queue.put(data)
+                        # exit drag mode
+                        clicking = False
+                        # binary encode the data for sending with no padding (6 bytes = 1 char + 2 ints + newline)
+                        data = struct.pack('=c2H', hand_label.encode(), x_loc, y_loc) + b'\n'
+                        await data_queue.put(data)
 
 
                     ## CASE 3.3 -> exit (= close fist)
@@ -317,17 +294,9 @@ async def send_data(landmark_queue, data_queue):
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
 
-                        # drag check
-                        current_time = time.time()
-                        if current_time - last_drag < drag_cooldown:
-                            # still dragging
-                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
-                            await data_queue.put(data)
-
-                        else:
-                            # exit drag mode
-                            clicking = False
-                            await data_queue.put(b'F\n')
+                        # exit drag mode
+                        clicking = False
+                        await data_queue.put(b'F\n')
 
                     ## CASE 3.5 -> change tab backward
                     tabb = dist(
@@ -354,15 +323,9 @@ async def send_data(landmark_queue, data_queue):
                                  FRAME_SIZE['width'], FRAME_SIZE['height'])
                     ):
                         # drag check
-                        current_time = time.time()
-                        if current_time - last_drag < drag_cooldown:
-                            # still dragging
-                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
-                            await data_queue.put(data)
 
-                        else:
-                            clicking = False
-                            await data_queue.put(b'B\n')
+                        clicking = False
+                        await data_queue.put(b'B\n')
 
                     ## CASE 3.6 -> mission control
                     tabm = dist(
@@ -390,15 +353,8 @@ async def send_data(landmark_queue, data_queue):
                     ):
 
                         # drag check
-                        current_time = time.time()
-                        if current_time - last_drag < drag_cooldown:
-                            # still dragging
-                            data = struct.pack('=c2H', b'D', x_loc, y_loc) + b'\n'
-                            await data_queue.put(data)
-
-                        else:
-                            clicking = False
-                            await data_queue.put(b'M\n')
+                        clicking = False
+                        await data_queue.put(b'M\n')
 
 
 async def main(data_queue=None):

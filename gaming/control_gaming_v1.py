@@ -86,8 +86,8 @@ async def process_data(data_queue, cur):
         data = data[:-1]  # Remove newline
         # print(data)
 
-        # use middle finger tap gesture to trigger motion (calibration in the centre)
-        if not active and data == b'B':
+        # use scroll gesture to trigger motion (calibration in the centre)
+        if not active and data == b'S':
             print("ACTIVATED")
             active = True
 
@@ -97,21 +97,7 @@ async def process_data(data_queue, cur):
                 try:
                     start_processing = time.time()
 
-                    if data.startswith(b'S'):  # Scrolling mode
-                        print("SCROLL MODE")
-                        if drag_mode:
-                            mouse.release(Button.left)
-                            drag_mode = False
-
-                        # _, scroll_loc, anchor_loc = struct.unpack('=c2H', data)
-                        # scroll_loc = 1000 - int(scroll_loc)
-                        # anchor_loc = 1000 - int(anchor_loc)
-                        # if scroll_anchor is None:
-                        #     scroll_anchor = anchor_loc
-                        # scroll_y = int((scroll_anchor - scroll_loc) / PARAMS['SCROLL'])
-                        # mouse.scroll(dx=0, dy=scroll_y)
-
-                    elif data.startswith(b'D'):  # Drag mode == automatic firing
+                    if data.startswith(b'D'):  # Drag mode == automatic firing
                         print("AUTOMATIC FIRE")
                         scroll_anchor = None
 
@@ -165,7 +151,7 @@ async def process_data(data_queue, cur):
                 command = data
                 current_time = time.time()
 
-                if command == b'B':     # middle finger tab now becomes CALIBRATION (move hand without cursor moving)
+                if command == b'S':     # scroll CALIBRATION (move hand without cursor moving - like lifting your mouse)
                     print("CALIBRATING")
                     post_calibration = True
 
