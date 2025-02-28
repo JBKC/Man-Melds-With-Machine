@@ -36,6 +36,7 @@ executor = ThreadPoolExecutor()
 clicking = False
 first_click = 0
 last_drag = 0                   # running record of last drag action to ensure continuity
+prev_side = 0                   # tracking forward/back browser commands
 drag_threshold = 0.15           # duration for click to be held in order to qualify as a drag
 drag_cooldown = 0.5             # ensure drag isn't exited abruptly
 
@@ -86,7 +87,7 @@ async def process_frame(frame_queue, landmark_queue):
 
 async def send_data(landmark_queue, data_queue):
 
-    global clicking, first_click, last_drag
+    global clicking, first_click, last_drag, prev_side
 
     while True:
         results = await landmark_queue.get()  # retrieve landmarks from Asyncio queue
@@ -118,7 +119,7 @@ async def send_data(landmark_queue, data_queue):
                 thumb_x = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].x
                 index_x = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']].x
                 middle_x = hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']].x
-                little_x = hand_landmarks.landmark[HAND_LANDMARKS['PINKY_TIP']].x
+                little_x = hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']].x
 
                 ### CASE 1: scrolling mode = index and middle finger extended, ring and little closed + upright
                 if (
@@ -196,6 +197,21 @@ async def send_data(landmark_queue, data_queue):
                     clicking = False
 
                     # we are in forward/back mode
+                    # track direction of the finger swipe relative to the thumb
+                    current_side = 1 if index_x > thumb_x and middle_x > thumb_x else -1  # 1 = right, -1 = left
+
+                    # detect when the fingers switch sides
+                    if prev_side != 0 and current_side != prev_side:
+                        if current_side == 1:
+                            # rightward movement = forward swipe
+                            await data_queue.put(b'Y\n')
+                        else:
+                            # leftward movement = back swipe
+                            await data_queue.put(b'Z\n')
+
+                    # Update the last known side
+                    prev_side = current_side
+
 
 
 
@@ -499,8 +515,8 @@ async def main(data_queue=None):
 
             ### optional: display the frame
             ### avoid printing landmarks synchronously as commands will not be as accurate
-            mirror = cv2.flip(frame, 1)
-            cv2.imshow("Hand Tracking", mirror)
+            # mirror = cv2.flip(frame, 1)
+            # cv2.imshow("Hand Tracking", mirror)
             ####
 
             if cv2.waitKey(1) & 0xFF == ord('q'):

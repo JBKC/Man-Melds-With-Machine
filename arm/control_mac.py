@@ -132,7 +132,7 @@ async def process_data(data_queue, cur):
         data = await data_queue.get()
         # remove newline
         data = data[:-1]
-        # print(data)
+        print(data)
 
         # Read movement packets
         if len(data) == 5:  # Movement and scroll packets: 1 char + 2 unsigned integers
@@ -278,19 +278,18 @@ async def process_data(data_queue, cur):
                 else:
                     print("Double click blocked")
 
-            if command == b'E':  # Exit command
-                raise StopException()
+            if command == b'Y':  # forward page
+                with pykeyboard.pressed(Key.cmd):
+                    pykeyboard.press(Key.right)
+                    pykeyboard.release(Key.right)
+                print("FORWARD PAGE")
 
-            if command == b'F':  # next tab
-                current_time = time.time()
-                if current_time - last_click > cooldown:
-                    with pykeyboard.pressed(Key.ctrl):
-                        pykeyboard.press(Key.tab)
-                        pykeyboard.release(Key.tab)
-                    print("NEXT TAB")
-                    last_click = current_time
-                else:
-                    print("Double tab forward blocked")
+            if command == b'Z':  # back page
+                with pykeyboard.pressed(Key.cmd):
+                    pykeyboard.press(Key.left)
+                    pykeyboard.release(Key.left)
+                print("BACK PAGE")
+
 
             if command == b'B':  # previous tab
                 current_time = time.time()
@@ -314,6 +313,9 @@ async def process_data(data_queue, cur):
                     last_click = current_time
                 else:
                     print("Double mission control blocked")
+
+            if command == b'E':  # Exit command
+                raise StopException()
 
         end_processing = time.time()  # End timing data processing
         # print(f"Time to process data packet: {end_processing - start_processing:.6f} seconds")
