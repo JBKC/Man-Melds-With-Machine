@@ -29,6 +29,7 @@ y_buffer = deque(maxlen=buffer_size)
 # initialise mouse clicks / position
 last_click = 0
 cooldown = 0.5          # seconds
+browser_cooldown = 1.0
 scroll_anchor = None
 drag_mode = False
 voice_mode = False
@@ -132,7 +133,7 @@ async def process_data(data_queue, cur):
         data = await data_queue.get()
         # remove newline
         data = data[:-1]
-        # print(data)
+        print(data)
 
         # Read movement packets
         if len(data) == 5:  # Movement and scroll packets: 1 char + 2 unsigned integers
@@ -278,17 +279,43 @@ async def process_data(data_queue, cur):
                 else:
                     print("Double click blocked")
 
+            if command == b'X':  # browser mode (prevents other actions from occurring)
+                print("BROWSER MODE")
+                # exit if currently in drag mode
+                if drag_mode:
+                    mouse.release(Button.left)
+                    drag_mode = False
+
+                # if currently in voice mode, exit by entering the text
+                if voice_mode:
+                    pykeyboard.release(Key.alt)
+                    time.sleep(1.0)
+                    pykeyboard.press(Key.enter)
+                    pykeyboard.release(Key.enter)
+                    voice_mode = False
+                continue
+
             if command == b'Y':  # forward page
-                with pykeyboard.pressed(Key.cmd):
-                    pykeyboard.press(Key.right)
-                    pykeyboard.release(Key.right)
-                print("FORWARD PAGE")
+                current_time = time.time()
+                if current_time - last_click > browser_cooldown:
+                    with pykeyboard.pressed(Key.cmd):
+                        pykeyboard.press(Key.right)
+                        pykeyboard.release(Key.right)
+                    print("FORWARD")
+                    last_click = current_time
+                else:
+                    print("Double tab back blocked")
 
             if command == b'Z':  # back page
-                with pykeyboard.pressed(Key.cmd):
-                    pykeyboard.press(Key.left)
-                    pykeyboard.release(Key.left)
-                print("BACK PAGE")
+                current_time = time.time()
+                if current_time - last_click > browser_cooldown:
+                    with pykeyboard.pressed(Key.cmd):
+                        pykeyboard.press(Key.left)
+                        pykeyboard.release(Key.left)
+                    print("BACK")
+                    last_click = current_time
+                else:
+                    print("Double tab back blocked")
 
             if command == b'F':  # next tab
                 current_time = time.time()
@@ -313,19 +340,28 @@ async def process_data(data_queue, cur):
                 else:
                     print("Double tab back blocked")
 
+            if command == b'N':  # new tab
+                current_time = time.time()
+                if current_time - last_click > cooldown:
+                    with pykeyboard.pressed(Key.cmd):
+                        pykeyboard.press('t')
+                        pykeyboard.release('t')
+                    print("NEW TAB")
+                    last_click = current_time
+                else:
+                    print("Double tab back blocked")
+
             if command == b'M':  # mission control
                 current_time = time.time()
                 if current_time - last_click > cooldown:
-                    pyautogui.keyDown("ctrl")
-                    pyautogui.press("up")
-                    pyautogui.keyUp("ctrl")
+                    with pykeyboard.pressed(Key.ctrl):
+                        pykeyboard.press(Key.up)
+                        pykeyboard.release(Key.up)
                     print("MISSION CONTROL")
                     last_click = current_time
                 else:
                     print("Double mission control blocked")
 
-            if command == b'E':  # Exit command
-                raise StopException()
 
         end_processing = time.time()  # End timing data processing
         # print(f"Time to process data packet: {end_processing - start_processing:.6f} seconds")

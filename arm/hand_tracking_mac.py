@@ -140,11 +140,18 @@ async def send_data(landmark_queue, data_queue):
                              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height'])
 
-                        # check for scrolling mode - x position of index + middle in-between thumb and little finger (hand-invariant)
+                        # second condition: x position of index + middle in-between thumb and little finger (hand-invariant)
                         and
                         min(thumb_x, little_x) < index_x < max(thumb_x, little_x) and
                         min(thumb_x, little_x) < middle_x < max(thumb_x, little_x)
-
+                        # third condition: thumb must be extended out
+                        and
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_J']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) >
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_J']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height'])
                 ):
 
                     # exit drag mode
@@ -168,8 +175,8 @@ async def send_data(landmark_queue, data_queue):
                     await data_queue.put(data)
                     # print(data)
 
-                ### CASE 1.1: forward/back browser page mode = index and middle finger extended to the side, other fingers closed
-                if (
+                ### CASE 1.1: forward/back page browser mode = index and middle finger extended to the side, other fingers closed
+                elif (
                         FIST_SIZE/2 <
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
@@ -191,12 +198,17 @@ async def send_data(landmark_queue, data_queue):
                         and not
                         min(thumb_x, little_x) < index_x < max(thumb_x, little_x) and not
                         min(thumb_x, little_x) < middle_x < max(thumb_x, little_x)
+                        # y positions should be below the thumb (recall y axis is flipped)
+                        and
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].y < hand_landmarks.landmark[HAND_LANDMARKS['INDEX_J']].y and
+                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].y < hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_J']].y
                 ):
-
                     # exit drag mode
                     clicking = False
 
-                    # we are in forward/back mode
+                    # indicate we are in forward/back mode
+                    await data_queue.put(b'X\n')
+
                     # track direction of the finger swipe relative to the thumb
                     current_side = 1 if index_x < thumb_x and middle_x < thumb_x else -1  # 1 = right, -1 = left (x coordinates inverted in mediapipe)
 
@@ -211,10 +223,6 @@ async def send_data(landmark_queue, data_queue):
 
                     # Update the last known side
                     prev_side = current_side
-
-
-
-
 
                 ### CASE 2: speech mode = devil horns (middle and ring fingers closed)
                 elif (
@@ -354,30 +362,41 @@ async def send_data(landmark_queue, data_queue):
                             await data_queue.put(data)
 
 
-                    ## CASE 3.3 -> exit (= close fist)
-                    # if (
-                    #         HAND_SIZE / 2 >
-                    #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                    #              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
-                    #              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                    #         HAND_SIZE / 2 >
-                    #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                    #              hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
-                    #              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                    #         HAND_SIZE >
-                    #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                    #              hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
-                    #              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                    #         HAND_SIZE >
-                    #         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
-                    #              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
-                    #              FRAME_SIZE['width'], FRAME_SIZE['height'])
-                    # ):
-                    #     # send 1 byte
-                    #     if RUN_MODE == "serial":
-                    #         serial_port.write(b'E\n')
-                    #     else:
-                    #         await data_queue.put(b'E\n')
+                    ## CASE 3.3 -> mission control (= close fist)
+                    if (
+                            FIST_SIZE >
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            FIST_SIZE >
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            FIST_SIZE >
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                            FIST_SIZE >
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height'])
+
+                            # avoid browser mode: x position of index + middle in-between thumb and little finger (hand-invariant)
+                            and
+                            min(thumb_x, little_x) < index_x < max(thumb_x, little_x) and
+                            min(thumb_x, little_x) < middle_x < max(thumb_x, little_x)
+                            # check to make sure thumb is closed over
+                            and
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_J']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height']) <
+                            dist(hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']],
+                                 hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_J']],
+                                 FRAME_SIZE['width'], FRAME_SIZE['height'])
+                    ):
+
+                        # send 1 byte
+                        await data_queue.put(b'M\n')
 
                     ## CASE 3.4 -> change tab forward
                     tabf = dist(
@@ -451,7 +470,7 @@ async def send_data(landmark_queue, data_queue):
                             clicking = False
                             await data_queue.put(b'B\n')
 
-                    ## CASE 3.6 -> mission control
+                    ## CASE 3.6 -> new tab
                     tabm = dist(
                         hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']],
                         hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
@@ -485,7 +504,7 @@ async def send_data(landmark_queue, data_queue):
 
                         else:
                             clicking = False
-                            await data_queue.put(b'M\n')
+                            await data_queue.put(b'N\n')
 
 
 async def main(data_queue=None):
@@ -516,8 +535,8 @@ async def main(data_queue=None):
 
             ### optional: display the frame
             ### avoid printing landmarks synchronously as commands will not be as accurate
-            # mirror = cv2.flip(frame, 1)
-            # cv2.imshow("Hand Tracking", mirror)
+            mirror = cv2.flip(frame, 1)
+            cv2.imshow("Hand Tracking", mirror)
             ####
 
             if cv2.waitKey(1) & 0xFF == ord('q'):

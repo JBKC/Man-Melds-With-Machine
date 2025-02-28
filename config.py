@@ -19,6 +19,7 @@ HAND_LANDMARKS = {
     'MIDDLE_TIP': 12,
     'MIDDLE_J': 10,     # reference for fist (first joint on middle finger)
     'RING_TIP': 16,
+    'LITTLE_J': 18,     # joint of little finger
     'LITTLE_TIP': 20,
     'WRIST': 0,
 }
