@@ -23,7 +23,7 @@ hands = mp_hands.Hands(
 )
 
 # initialize camera
-cap = cv2.VideoCapture(1)
+cap = cv2.VideoCapture(0)
 
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])
@@ -183,8 +183,35 @@ async def send_data(landmark_queue, data_queue):
                     # 2 bytes = 1 char (V for voice) + newline
                     await data_queue.put(b'V\n')
 
+                ### CASE 2.1: browser typing mode = single finger raised
+                # used to snap to the search bar at the top of a browser
+                elif (
+                        FIST_SIZE <
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                        FIST_SIZE >
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                        FIST_SIZE >
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                        FIST_SIZE >
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height'])
+                ):
 
-                ### CASE 3: cursor mode = open palm
+                    # exit drag mode
+                    clicking = False
+
+                    # 2 bytes = 1 char (T for type) + newline
+                    await data_queue.put(b'T\n')
+
+
+                ### CASE 3: cursor mode = open palm & tap commands
                 else:
 
                     # establish live hand location

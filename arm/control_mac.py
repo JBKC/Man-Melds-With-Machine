@@ -257,8 +257,18 @@ async def process_data(data_queue, cur):
                     # if voice mode already activated, do nothing (user is speaking)
                     pass
 
-            if command == b'C':  # Click command
+            if command == b'T':  # browser type command
+                current_time = time.time()
+                if current_time - last_click > cooldown:
+                    with pykeyboard.pressed(Key.cmd):
+                        pykeyboard.press('l')
+                        pykeyboard.release('l')
+                    print("TYPE")
+                    last_click = current_time
+                else:
+                    print("Double click blocked")
 
+            if command == b'C':  # Click command
                 current_time = time.time()
                 if current_time - last_click > cooldown:
                     mouse.press(Button.left)
@@ -268,7 +278,7 @@ async def process_data(data_queue, cur):
                 else:
                     print("Double click blocked")
 
-            elif command == b'E':  # Exit command
+            if command == b'E':  # Exit command
                 raise StopException()
 
             if command == b'F':  # next tab
