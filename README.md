@@ -3,16 +3,22 @@ Control your Mac in real-time using hand gestures, recorded by camera and interp
 
 High-level how it works = run code, raise one hand in front of camera, camera reads hand gesture, gesture gets interpreted into mouse / keyboard action, Mac is controlled 
 
-See demo here: https://x.com/jbelevate/status/1891604727923704078
+See demo here: https://x.com/jbelevate/status/1895561153830613161
+
+** Note - for voice functionality, you need a speech-to-type platform (like https://wisprflow.ai/) with the Alt key set to trigger speech **
 
 ## Commands and what they do
-1. Move cursor = open palm (reference point for movement is base of third finger)
-2. Scroll = keep index and middle finger raised; curl ring and little finger into fist (reference point for scroll is tip of index finger)
-3. Left mouse click = tap tip of thumb and tip of index finger
-4. Tab backwards = tap tip of thumb and tip of middle finger
-5. Tab forwards = tap tip of thumb and tip of ring finger
-6. Mission control = tap tip of thumb and tip of little finger
-7. Exit program = make a fist with all fingers
+1. Move cursor = open palm with hand parallel to camera (reference point for movement is base of third finger)
+2. Scroll = keep index and middle finger raised; curl ring and little finger into fist (reference point for scroll is tip of index finger). Keep thumb extended
+3. Snap to browser search bar = extend thumb and pinky finger - close all other fingers ("hang loose" hand gesture)
+4. Speech-to-type mode = keep index and pinky extended - close middle and ring fingers ("devil horns" hand gesture)
+5. Browser page forward/back = swipe horizontally right/left with index, middle and thumb extended, with hand perpendicular to camera
+6. Left mouse click = tap tip of thumb and tip of index finger
+7. Tab backwards = tap tip of thumb and tip of middle finger
+8. Tab forwards = tap tip of thumb and tip of ring finger
+9. New tab = tap tip of thumb and tip of little finger
+10. Mission control = make a closed fist
+    
 
 ## Install it
 ### 1. Clone this repository:
