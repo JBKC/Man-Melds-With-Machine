@@ -198,7 +198,7 @@ async def send_data(landmark_queue, data_queue):
 
                     # we are in forward/back mode
                     # track direction of the finger swipe relative to the thumb
-                    current_side = 1 if index_x > thumb_x and middle_x > thumb_x else -1  # 1 = right, -1 = left
+                    current_side = 1 if index_x < thumb_x and middle_x < thumb_x else -1  # 1 = right, -1 = left (x coordinates inverted in mediapipe)
 
                     # detect when the fingers switch sides
                     if prev_side != 0 and current_side != prev_side:
