@@ -290,6 +290,16 @@ async def process_data(data_queue, cur):
                     pykeyboard.release(Key.left)
                 print("BACK PAGE")
 
+            if command == b'F':  # next tab
+                current_time = time.time()
+                if current_time - last_click > cooldown:
+                    with pykeyboard.pressed(Key.ctrl):
+                        pykeyboard.press(Key.tab)
+                        pykeyboard.release(Key.tab)
+                    print("NEXT TAB")
+                    last_click = current_time
+                else:
+                    print("Double tab back blocked")
 
             if command == b'B':  # previous tab
                 current_time = time.time()
