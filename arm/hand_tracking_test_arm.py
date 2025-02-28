@@ -19,8 +19,8 @@ hands = mp_hands.Hands(
 )
 
 # Initialize camera
-# cap = cv2.VideoCapture(0)               # built-in camera
-cap = cv2.VideoCapture(1)               # iPhone camera
+cap = cv2.VideoCapture(0)               # built-in camera
+# cap = cv2.VideoCapture(1)               # iPhone camera
 
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, FRAME_SIZE['width'])
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, FRAME_SIZE['height'])

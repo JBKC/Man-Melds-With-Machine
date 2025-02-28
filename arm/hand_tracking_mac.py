@@ -114,7 +114,13 @@ async def send_data(landmark_queue, data_queue):
                     hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_J']],
                     FRAME_SIZE['width'], FRAME_SIZE['height'])
 
-                ### CASE 1: scrolling mode = index and middle finger extended, ring and little closed
+                # x positions
+                thumb_x = hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].x
+                index_x = hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']].x
+                middle_x = hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']].x
+                little_x = hand_landmarks.landmark[HAND_LANDMARKS['PINKY_TIP']].x
+
+                ### CASE 1: scrolling mode = index and middle finger extended, ring and little closed + upright
                 if (
                         FIST_SIZE/2 <
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
@@ -131,9 +137,13 @@ async def send_data(landmark_queue, data_queue):
                         FIST_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
-                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_TIP']].x -
-                        hand_landmarks.landmark[HAND_LANDMARKS['THUMB_J']].x > 0
+                             FRAME_SIZE['width'], FRAME_SIZE['height'])
+
+                        # check for scrolling mode - x position of index + middle in-between thumb and little finger (hand-invariant)
+                        and
+                        min(thumb_x, little_x) < index_x < max(thumb_x, little_x) and
+                        min(thumb_x, little_x) < middle_x < max(thumb_x, little_x)
+
                 ):
 
                     # exit drag mode
@@ -156,6 +166,39 @@ async def send_data(landmark_queue, data_queue):
                     data = struct.pack('=c2H', b'S', scroll_loc, anchor_loc) + b'\n'
                     await data_queue.put(data)
                     # print(data)
+
+                ### CASE 1.1: forward/back browser page mode = index and middle finger extended to the side, other fingers closed
+                if (
+                        FIST_SIZE/2 <
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                        FIST_SIZE/2 <
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['MIDDLE_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                        FIST_SIZE >
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height']) and
+                        FIST_SIZE >
+                        dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
+                             hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
+                             FRAME_SIZE['width'], FRAME_SIZE['height'])
+
+                        # x position of index + middle should be to one side of thumb and little finger (hand-invariant)
+                        and not
+                        min(thumb_x, little_x) < index_x < max(thumb_x, little_x) and not
+                        min(thumb_x, little_x) < middle_x < max(thumb_x, little_x)
+                ):
+
+                    # exit drag mode
+                    clicking = False
+
+                    # we are in forward/back mode
+
+
+
 
                 ### CASE 2: speech mode = devil horns (middle and ring fingers closed)
                 elif (
