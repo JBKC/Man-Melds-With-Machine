@@ -271,6 +271,11 @@ async def process_data(data_queue, cur):
 
             if command == b'C':  # Click command
                 current_time = time.time()
+
+                # stop any key hangovers
+                pykeyboard.release(Key.ctrl)
+                pykeyboard.release(Key.cmd)
+
                 if current_time - last_click > cooldown:
                     mouse.press(Button.left)
                     mouse.release(Button.left)
@@ -281,6 +286,7 @@ async def process_data(data_queue, cur):
 
             if command == b'X':  # browser mode (prevents other actions from occurring)
                 print("BROWSER MODE")
+
                 # exit if currently in drag mode
                 if drag_mode:
                     mouse.release(Button.left)
@@ -304,7 +310,7 @@ async def process_data(data_queue, cur):
                     print("FORWARD")
                     last_click = current_time
                 else:
-                    print("Double tab back blocked")
+                    print("Double page next blocked")
 
             if command == b'Z':  # back page
                 current_time = time.time()
@@ -315,7 +321,7 @@ async def process_data(data_queue, cur):
                     print("BACK")
                     last_click = current_time
                 else:
-                    print("Double tab back blocked")
+                    print("Double page back blocked")
 
             if command == b'F':  # next tab
                 current_time = time.time()
