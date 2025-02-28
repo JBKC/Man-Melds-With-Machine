@@ -242,10 +242,10 @@ async def send_data(landmark_queue, data_queue):
                     # 2 bytes = 1 char (V for voice) + newline
                     await data_queue.put(b'V\n')
 
-                ### CASE 2.1: browser typing mode = single finger raised
+                ### CASE 2.1: browser typing mode = little finger raised
                 # used to snap to the search bar at the top of a browser
                 elif (
-                        FIST_SIZE <
+                        FIST_SIZE >
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['INDEX_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
@@ -257,10 +257,11 @@ async def send_data(landmark_queue, data_queue):
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['RING_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height']) and
-                        FIST_SIZE >
+                        FIST_SIZE <
                         dist(hand_landmarks.landmark[HAND_LANDMARKS['WRIST']],
                              hand_landmarks.landmark[HAND_LANDMARKS['LITTLE_TIP']],
                              FRAME_SIZE['width'], FRAME_SIZE['height'])
+
                 ):
 
                     # exit drag mode
