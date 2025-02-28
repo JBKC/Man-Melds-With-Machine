@@ -354,9 +354,13 @@ async def process_data(data_queue, cur):
             if command == b'M':  # mission control
                 current_time = time.time()
                 if current_time - last_click > cooldown:
-                    with pykeyboard.pressed(Key.ctrl):
-                        pykeyboard.press(Key.up)
-                        pykeyboard.release(Key.up)
+                    # with pykeyboard.pressed(Key.ctrl):
+                    #     pykeyboard.press(Key.up)
+                    #     pykeyboard.release(Key.up)
+                    pyautogui.keyDown("ctrl")
+                    pyautogui.keyDown("up")
+                    pyautogui.keyUp("up")
+                    pyautogui.keyUp("ctrl")
                     print("MISSION CONTROL")
                     last_click = current_time
                 else:

@@ -535,8 +535,8 @@ async def main(data_queue=None):
 
             ### optional: display the frame
             ### avoid printing landmarks synchronously as commands will not be as accurate
-            mirror = cv2.flip(frame, 1)
-            cv2.imshow("Hand Tracking", mirror)
+            # mirror = cv2.flip(frame, 1)
+            # cv2.imshow("Hand Tracking", mirror)
             ####
 
             if cv2.waitKey(1) & 0xFF == ord('q'):
